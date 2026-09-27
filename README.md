@@ -20,6 +20,7 @@ IT consultancy.
 - [Environment variables](#environment-variables)
 - [Commands](#commands)
 - [Project structure](#project-structure)
+- [Brand assets](#brand-assets)
 - [Adding a service](#adding-a-service)
 - [Database](#database)
 - [Deployment](#deployment)
@@ -181,6 +182,7 @@ absent field is better than a wrong one, and far better than emitting a literal
 | `npm run db:generate` | Regenerate the Prisma client |
 | `npm run db:studio` | Prisma Studio |
 | `npm run placeholders` | Regenerate placeholder project cover images |
+| `npm run logo` | Regenerate the logo assets from `src/brand/emblem.ts` |
 
 ---
 
@@ -195,11 +197,18 @@ absent field is better than a wrong one, and far better than emitting a literal
 │   └── seed.ts                Service categories + labelled placeholder projects
 ├── scripts/
 │   ├── apply-migrations.mjs   Applies migrations without a shadow DB
+│   ├── generate-logo.ts       Writes the logo assets from src/brand/emblem.ts
 │   └── generate-placeholders.ts
 ├── private-uploads/           User uploads. Gitignored, never served statically
+├── public/
+│   ├── brand/                 Generated logo assets
+│   └── portfolio/             Generated placeholder cover art
 └── src/
     ├── app/                   Routes (App Router)
+    ├── brand/
+    │   └── emblem.ts          Logo geometry and colours (single source of truth)
     ├── components/
+    │   ├── brand/             Emblem component
     │   ├── layout/            Header, Footer, WhatsApp button
     │   ├── ui/                Design-system primitives
     │   ├── sections/          Homepage sections
@@ -221,6 +230,75 @@ absent field is better than a wrong one, and far better than emitting a literal
     │   └── auth/              Future auth seam
     └── generated/prisma/      Generated. Gitignored.
 ```
+
+---
+
+## Brand assets
+
+### The emblem
+
+The mark is a **C** wrapping a **T** whose stem turns into a forward arrow, in
+the supplied two-tone palette: navy `#1B3A6B` and silver `#A8ACAF`. It is
+authored as **filled paths only** — no strokes, gradients, filters or shadows —
+so it renders identically in a browser, in print and in an email signature, and
+needs no image pipeline. Total weight is about 600 bytes.
+
+It is defined **once**, in `src/brand/emblem.ts`, as named parameters (radii,
+angles, stroke widths) rather than as hand-typed coordinates. Both the on-page
+component and the generated asset files read that module, so they cannot drift
+apart. To change the proportions, edit a parameter there and run:
+
+```bash
+npm run logo
+```
+
+which rewrites:
+
+| File | Use |
+|---|---|
+| `public/brand/emblem.svg` | The mark alone on a transparent ground, to place on a light surface |
+| `public/brand/emblem-dark.svg` | The mark on its near-black badge — the version to use on the website, in print or in an email signature |
+| `public/brand/favicon.svg` | Square badge for browsers and app icons |
+| `src/app/icon.svg` | The App Router favicon, picked up by file convention |
+
+The wordmark ("CHIBOY / TECHNOLOGIES") is **set as real HTML text** beside the
+mark rather than outlined into the SVG, in three deliberate ways. It uses the
+site's own font, so the wordmark matches the rest of the typography; it stays
+selectable, translatable and readable by screen readers; and it cannot come out
+misspelled, which is the most common failure mode of a generated wordmark. The
+outlined-letterform approach is worth revisiting only if a single-file
+all-in-one lockup is ever needed for print.
+
+### Why the mark always sits on a dark badge
+
+The supplied palette is deliberately split in brightness, and the two tones are
+each strong against one background and weak against the other:
+
+| | On white | On the near-black badge |
+|---|---|---|
+| Navy `#1B3A6B` | **11.3:1** | 1.9:1 |
+| Silver `#A8ACAF` | 2.3:1 | **9.2:1** |
+
+Neither tone is legible on the other's ground, so the logo carries its own
+near-black badge rather than relying on whatever it happens to sit on. On that
+badge the silver T and arrow carry the mark at full strength and the navy ring
+reads as a deliberate tonal frame. Placing the mark straight onto the white
+header without its badge would drop the T to 2.3:1.
+
+Those ratios are asserted in `src/brand/__tests__/emblem.test.ts`, so moving the
+badge away from a dark ground fails the tests with the reason attached.
+
+### Two things to know
+
+- **The geometry is duplicated into the client bundle**, because `Header` is a
+  client component and the emblem renders inside it. That is roughly 600 bytes
+  of path data. Making `Header` a server component with a client-only drawer
+  would remove it, and is the better structure, but it is a refactor of the
+  header rather than of the logo.
+- **At 16×16 the navy ring falls below one pixel**, so the favicon effectively
+  reads as the silver T on black. That is legible and on-brand, and the tab also
+  shows the page title, so a separate simplified 16px variant was not judged
+  worth having a second asset to keep in sync.
 
 ---
 

@@ -22,7 +22,8 @@
     "db:status": "prisma migrate status",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "placeholders": "tsx scripts/generate-placeholders.ts"
+    "placeholders": "tsx scripts/generate-placeholders.ts",
+    "logo": "tsx scripts/generate-logo.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",

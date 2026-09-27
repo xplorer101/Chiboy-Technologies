@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, Phone, X } from "lucide-react";
+import { Emblem } from "@/components/brand/Emblem";
 import { ButtonLink } from "@/components/ui/Button";
 import { navigation } from "@/content/site";
 import { cn } from "@/lib/utils/cn";
@@ -84,7 +85,7 @@ export function Header({
           className="flex shrink-0 items-center gap-2.5"
           aria-label="CHIBOY TECHNOLOGIES — home"
         >
-          <Mark />
+          <Emblem className="size-9 shrink-0" />
           <span className="text-sm leading-tight font-bold tracking-tight text-navy-900 sm:text-base">
             CHIBOY
             <span className="block font-semibold text-navy-600">TECHNOLOGIES</span>
@@ -222,36 +223,5 @@ export function Header({
         </>
       ) : null}
     </header>
-  );
-}
-
-/**
- * Brand mark: a navy rounded square with a gold chassis-like glyph. Drawn in
- * inline SVG so it costs no request and inherits currentColor cleanly.
- */
-function Mark() {
-  return (
-    <span
-      aria-hidden="true"
-      className="grid size-9 shrink-0 place-items-center rounded-lg bg-navy-900"
-    >
-      <svg viewBox="0 0 24 24" className="size-5" fill="none">
-        <rect
-          x="4.25"
-          y="4.25"
-          width="15.5"
-          height="15.5"
-          rx="2.5"
-          stroke="var(--color-gold-500)"
-          strokeWidth="1.6"
-        />
-        <path
-          d="M9 9.5h6M9 12.5h6M9 15.5h3.5"
-          stroke="var(--color-gold-500)"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        />
-      </svg>
-    </span>
   );
 }
