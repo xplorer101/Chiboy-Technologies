@@ -60,7 +60,10 @@ export function buildPoolConfig(connectionString: string): PoolConfig {
     // Serverless-friendly pool sizing. See the note above.
     max: 5,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000,
+    // Generous: a serverless pooler can sit idle between invocations and the
+    // handshake is noticeably slower than a direct connection. Timing out too
+    // eagerly turns a brief queue at the pooler into a user-visible error.
+    connectionTimeoutMillis: 20_000,
     // Do not keep a Node process alive purely to hold an idle pool.
     allowExitOnIdle: true,
   };

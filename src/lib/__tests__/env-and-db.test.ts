@@ -56,10 +56,15 @@ describe("buildPoolConfig", () => {
       "postgres://postgres.ref:secret@aws-0-eu-west-2.pooler.supabase.com:6543/postgres",
     );
 
-    expect(config.ssl).toBeDefined();
-    expect(config.ssl).toMatchObject({ rejectUnauthorized: true });
+    // `pg` types `ssl` as a boolean or a connection options object.
+    expect(config.ssl).toBeTypeOf("object");
+    const options = config.ssl as { ca?: string; rejectUnauthorized?: boolean };
+
+    // Verification must stay on: the point of vendoring the CA is to keep the
+    // chain checked rather than falling back to sslmode=no-verify.
+    expect(options.rejectUnauthorized).toBe(true);
     // The CA must be a real PEM block, not an empty or missing file.
-    expect(String(config.ssl?.ca)).toContain("BEGIN CERTIFICATE");
+    expect(options.ca).toContain("BEGIN CERTIFICATE");
   });
 
   it("leaves TLS to the system trust store for non-Supabase hosts", () => {
