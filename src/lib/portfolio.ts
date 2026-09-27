@@ -146,6 +146,30 @@ export async function getPublishedProjectSlugs(): Promise<string[]> {
   }
 }
 
+/**
+ * Slug and edit time for every published project, for `sitemap.xml`.
+ *
+ * Deliberately narrower than `getPublishedProjects`: the sitemap needs no
+ * titles, summaries or cover art, and selecting them would pull a row's worth
+ * of text and image paths into a route that renders none of it.
+ */
+export async function getPublishedProjectTimestamps(): Promise<
+  { slug: string; updatedAt: Date | null }[]
+> {
+  try {
+    return await prisma.portfolioProject.findMany({
+      where: { visibility: ProjectVisibility.PUBLISHED },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+    });
+  } catch {
+    // A sitemap without project entries is still valid; the static routes
+    // carry the important pages. Failing the whole sitemap over one query
+    // would be a worse outcome than an incomplete one.
+    return [];
+  }
+}
+
 /** Resolves a service's related project slugs, silently dropping any missing. */
 export async function getProjectsBySlugs(slugs: readonly string[]): Promise<PortfolioCard[]> {
   if (slugs.length === 0) return [];

@@ -127,8 +127,17 @@ export default async function PortfolioPage({
         </Container>
       </section>
 
-      <Section tone="white" size="compact">
+      <Section tone="white" size="compact" labelledBy="portfolio-grid-heading">
         <Container>
+          {/* The grid has no heading of its own, so without this the page jumps
+              straight from the h1 to the h3 inside every ProjectCard. */}
+          <SectionHeading
+            id="portfolio-grid-heading"
+            eyebrow="Selected work"
+            title="Projects we can show you"
+            lead="Each entry sets out the problem, what was done and the outcome. Entries still marked as placeholders are samples of our format, not completed client work."
+          />
+
           {/* ---- Category filter ---- */}
           {projects.length > 0 ? (
             <nav aria-label="Filter portfolio by category" className="border-b border-charcoal-200 pb-6">
@@ -183,7 +192,7 @@ export default async function PortfolioPage({
 
           {/* ---- Grid, or the honest reason there is not one ---- */}
           {visible.length > 0 ? (
-            <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((project, index) => (
                 <ProjectCard
                   key={project.slug}
@@ -314,11 +323,11 @@ function FilterChip({
     return (
       <span
         aria-hidden="true"
-        className={cn(base, "border-dashed border-charcoal-200 text-charcoal-400")}
+        className={cn(base, "border-dashed border-charcoal-200 text-charcoal-500")}
         title="No entries in this category yet"
       >
         {label}
-        <span className="text-charcoal-400">{count}</span>
+        <span className="text-charcoal-500">{count}</span>
       </span>
     );
   }
@@ -334,7 +343,9 @@ function FilterChip({
       }
     >
       {label}
-      <span className={isActive ? "text-charcoal-300" : "text-charcoal-400"}>
+      {/* The active chip sits on navy, so it needs a light count; the inactive
+          one sits on white, where charcoal-400 would be only 3.23:1. */}
+      <span className={isActive ? "text-charcoal-300" : "text-charcoal-500"}>
         {count}
       </span>
     </Link>

@@ -319,7 +319,8 @@ absent field is better than a wrong one, and far better than emitting a literal
 │   ├── brand/                 Generated logo assets
 │   └── portfolio/             Generated placeholder cover art
 └── src/
-    ├── app/                   Routes (App Router)
+    ├── app/                   Routes (App Router), plus sitemap.ts, robots.ts
+    │                          and opengraph-image.tsx at the root
     ├── brand/
     │   └── emblem.ts          Logo geometry and colours (single source of truth)
     ├── components/
@@ -338,6 +339,9 @@ absent field is better than a wrong one, and far better than emitting a literal
     │   ├── prisma.ts          Prisma singleton
     │   ├── db-config.ts       Connection string -> pg pool config
     │   ├── env.ts             Zod-validated environment
+    │   ├── placeholder.ts      Dependency-free placeholder detection (keeps zod
+    │   │                       out of the client bundle — see Performance)
+    │   ├── sitemap.ts         Sitemap construction (pure, unit-tested)
     │   ├── rate-limit.ts      Fixed-window limiter (Redis REST / in-memory)
     │   ├── portfolio.ts       Project reads, and one that reports unavailability
     │   ├── portfolio-categories.ts   Category list, labels, ?category= parsing
@@ -673,6 +677,99 @@ These are the items that must be resolved first — see
    time, so enabling a channel is not enough on its own — the site must be
    rebuilt before the policy starts naming that provider. Rebuilding is the same
    step that deploys, so this applies naturally in production.
+
+---
+
+## SEO, accessibility and performance
+
+### Search-engine surface
+
+| Route | What it does |
+|---|---|
+| `/sitemap.xml` | All 31 indexable URLs: 7 static, 6 services, 18 published projects |
+| `/robots.txt` | Allows everything, points at the sitemap, skips `/request-service` and `/api/` |
+| `/opengraph-image` | 1200×630 PNG generated at build time from the brand tokens |
+
+Every page has a unique `<title>` and description, a canonical URL, and
+page-specific Open Graph and Twitter tags. Structured data (`LocalBusiness`,
+`ProfessionalService`, `BreadcrumbList`) is emitted only where the underlying
+facts exist — portfolio entries that are still placeholders are deliberately
+excluded rather than described as completed work.
+
+Two deliberate choices in `src/lib/sitemap.ts`:
+
+- **Static routes carry no `lastModified`.** A build timestamp would change on
+  every deployment and tell crawlers that untouched content is newly published,
+  which trains them to ignore the signal.
+- **Slugs must be a single safe path segment.** Anything containing `/`, `..`,
+  a scheme, a space or a query string is dropped, so a stray value in the
+  content file or database cannot place an arbitrary or off-site URL in the
+  sitemap. Covered by tests.
+
+With `NEXT_PUBLIC_SITE_URL` unset, the sitemap returns empty rather than
+emitting `localhost` URLs, and `robots.txt` omits the sitemap line. A missing
+sitemap is recoverable; one full of `localhost` links points crawlers away from
+the production site.
+
+The Open Graph image uses satori's built-in font. The only font committed is a
+WOFF2, which satori cannot read, and shipping a second TTF purely for the card
+would mean a larger binary in the repository and a conversion step nobody can
+reproduce.
+
+### Accessibility
+
+Verified present: skip link, one `<h1>` per page with no skipped levels,
+labelled form controls with `aria-describedby` for hints and errors,
+`role="alert"` / `role="status"` regions on form results, visible
+`:focus-visible` rings with no `outline-none` anywhere, `prefers-reduced-motion`
+handling, and 44px minimum tap targets.
+
+Colour is defined in OKLCH in `src/app/globals.css`, so contrast has to be
+computed rather than eyeballed. Measured ratios for the combinations actually
+used:
+
+| Combination | Ratio | AA (4.5:1) |
+|---|---|---|
+| `navy-950` body text on white | 19.41:1 | pass |
+| `navy-600` secondary on white | 9.20:1 | pass |
+| `navy-950` on `gold-500` (primary button) | 8.07:1 | pass |
+| `gold-400` on `navy-950` (dark sections) | 10.75:1 | pass |
+| `charcoal-500` on white (muted, placeholder) | 4.85:1 | pass |
+| `success-600` on `success-50` | 4.86:1 | pass |
+| `navy-950` on WhatsApp green `#25D366` | 12.97:1 | pass |
+
+Four combinations were below threshold and were changed: the WhatsApp button
+was white on green (1.50:1), input placeholders and the portfolio filter counts
+were `charcoal-400` on white (3.23:1), and `success-600` on `success-50` was
+4.46:1 — marginally under the line, now 4.86:1.
+
+### Performance
+
+The largest win was removing zod from the client bundle of every page.
+`src/content/site.ts` imported `isPlaceholder` from `src/lib/env.ts`, which
+imports zod. `Header.tsx` is a client component and imports `site.ts`, so the
+whole schema library shipped to browsers on routes that have no form. Moving
+that two-line predicate into `src/lib/placeholder.ts`, which imports nothing,
+broke the chain.
+
+| Route | Before (raw) | After (raw) | Change |
+|---|---|---|---|
+| `/`, `/about`, `/services`, `/privacy` | 867–882 KB | 587–602 KB | **−280 KB (−50 KB gzipped)** |
+| `/contact` | 916 KB | 1,028 KB | +112 KB — see below |
+
+zod is now loaded only by `/contact` and `/request-service`, the two pages whose
+forms validate in the browser. That is the intended design: one set of Zod
+schemas backs both React Hook Form and the Server Action, so client and server
+apply identical rules and they cannot drift. Replacing it with hand-written
+client validation would duplicate every rule and guarantee the two sides
+disagree eventually. `/contact` is a form page; carrying a schema library to
+validate it is the cost of not having two validation implementations.
+
+Other measures already in place: the font is self-hosted via `next/font/local`
+and preloaded (27 KB, no third-party request, no layout shift), portfolio covers
+are SVGs that `next/image` cannot optimise and are loaded with explicit
+`loading` and `decoding` hints, and static routes are prerendered with a 1-hour
+revalidation window.
 
 ---
 

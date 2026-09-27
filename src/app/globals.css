@@ -41,7 +41,10 @@
   --color-gold-700: oklch(0.54 0.085 80);
 
   /* --- Semantic status colours ------------------------------------------- */
-  --color-success-600: oklch(0.53 0.13 155);
+  /* success-600 is used as text on success-50 (form success states). At L 0.53
+     that pairing was 4.46:1, just under the 4.5:1 AA threshold for body text.
+     L 0.51 gives 4.86:1 on success-50 and 5.40:1 on white. */
+  --color-success-600: oklch(0.51 0.13 155);
   --color-success-50: oklch(0.96 0.03 155);
   --color-danger-600: oklch(0.53 0.19 27);
   --color-danger-50: oklch(0.96 0.03 27);

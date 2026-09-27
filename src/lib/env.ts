@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isPlaceholder } from "@/lib/placeholder";
+
 /**
  * Environment validation.
  *
@@ -15,8 +17,6 @@ import { z } from "zod";
  * Nothing here logs a value: on failure only the offending *names* are
  * reported, so credentials can never leak into logs.
  */
-
-const PLACEHOLDER_PATTERN = /^\[.*\]$/;
 
 const serverEnvSchema = z.object({
   DATABASE_URL: z
@@ -221,7 +221,4 @@ export function getPublicEnv(): PublicEnv {
 }
 
 /** A value is a placeholder if it is empty or wrapped in square brackets. */
-export function isPlaceholder(value: string): boolean {
-  const trimmed = value.trim();
-  return trimmed.length === 0 || PLACEHOLDER_PATTERN.test(trimmed);
-}
+export { isPlaceholder } from "@/lib/placeholder";

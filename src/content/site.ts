@@ -1,4 +1,4 @@
-import { isPlaceholder } from "@/lib/env";
+import { isPlaceholder } from "@/lib/placeholder";
 
 /**
  * Single source of truth for brand, navigation and business contact details.

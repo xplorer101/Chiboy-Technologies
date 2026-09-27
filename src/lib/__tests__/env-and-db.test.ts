@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildPoolConfig } from "@/lib/db-config";
-import { isPlaceholder } from "@/lib/env";
+import { isPlaceholder } from "@/lib/placeholder";
 
 describe("isPlaceholder", () => {
   it("treats bracketed values as placeholders", () => {

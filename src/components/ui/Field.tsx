@@ -13,7 +13,7 @@ import { TriangleAlert } from "lucide-react";
 
 const controlClasses =
   "w-full rounded-lg border bg-white px-4 py-3 text-[0.9375rem] text-charcoal-900 " +
-  "placeholder:text-charcoal-400 transition-colors " +
+  "placeholder:text-charcoal-500 transition-colors " +
   "focus:border-navy-600 disabled:bg-charcoal-50 disabled:text-charcoal-500";
 
 function controlClass(invalid: boolean): string {
