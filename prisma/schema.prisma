@@ -1,0 +1,232 @@
+// CHIBOY TECHNOLOGIES — Prisma schema
+// Target: PostgreSQL. All schema changes must go through `prisma migrate dev`
+// so that migration history stays tracked in version control.
+
+generator client {
+  provider = "prisma-client"
+
+  // Prisma 7 requires an explicit output path; the client is plain TypeScript
+  // generated into the repo rather than into node_modules.
+  output = "../src/generated/prisma"
+
+  runtime = "nodejs"
+
+  // Lets the seed script (run via tsx) resolve the generated .ts imports.
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+  // The connection string lives in prisma.config.ts, not here.
+}
+
+// =============================================================================
+// FUTURE-READY MODELS
+// Defined now so that /admin, /customer and /tickets can be added later
+// without a schema migration. Not used by any phase 1 code.
+// =============================================================================
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedRequests ServiceRequest[] @relation("RequestAssignee")
+  assignedTickets  JobTicket[]      @relation("TicketAssignee")
+
+  @@map("users")
+}
+
+// =============================================================================
+// SERVICE CATALOG
+// =============================================================================
+
+model ServiceCategory {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requests ServiceRequest[]
+
+  @@index([isActive, sortOrder])
+  @@map("service_categories")
+}
+
+// =============================================================================
+// SERVICE REQUESTS
+// =============================================================================
+
+enum RequestStatus {
+  NEW
+  IN_REVIEW
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PreferredContact {
+  PHONE
+  WHATSAPP
+  EMAIL
+}
+
+model ServiceRequest {
+  id        String  @id @default(cuid())
+  reference String  @unique
+  fullName  String
+  email     String
+  phone     String
+
+  serviceId String?
+  service   ServiceCategory? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  /// Populated when the visitor selects "Other" instead of a listed service.
+  serviceOther String?
+
+  location     String
+  contactPref  PreferredContact @default(PHONE)
+  description  String
+  status       RequestStatus    @default(NEW)
+
+  /// Internal only. Must never be returned by any public-facing query.
+  internalNotes String?
+  assignedToId  String?
+  assignedTo    User?            @relation("RequestAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments ServiceRequestAttachment[]
+
+  @@index([status, createdAt])
+  @@index([serviceId])
+  @@index([createdAt])
+  @@map("service_requests")
+}
+
+model ServiceRequestAttachment {
+  id           String         @id @default(cuid())
+  requestId    String
+  request      ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  originalName String
+  storedName   String
+  storageKey   String
+  /// Detected from file signature bytes on the server, never from the client.
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime       @default(now())
+
+  @@index([requestId])
+  @@map("service_request_attachments")
+}
+
+// =============================================================================
+// PORTFOLIO
+// =============================================================================
+
+enum PortfolioCategory {
+  SOFTWARE
+  NETWORKING
+  COMPUTER_SERVICES
+  GRAPHICS_DESIGN
+  OTHER
+}
+
+enum ProjectVisibility {
+  DRAFT
+  PUBLISHED
+}
+
+model PortfolioProject {
+  id          String             @id @default(cuid())
+  slug        String             @unique
+  title       String
+  summary     String
+  category    PortfolioCategory
+  problem     String
+  solution    String
+  toolsUsed   String[]
+  result      String
+  coverImage  String
+  images      String[]
+  serviceSlug String?
+  /// True while the entry is sample content. The UI labels these clearly and
+  /// they are removed as real projects are supplied.
+  isPlaceholder Boolean            @default(true)
+  visibility    ProjectVisibility   @default(PUBLISHED)
+  sortOrder     Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([visibility, sortOrder])
+  @@index([category])
+  @@map("portfolio_projects")
+}
+
+// =============================================================================
+// CONTACT MESSAGES
+// =============================================================================
+
+enum MessageStatus {
+  NEW
+  READ
+  RESPONDED
+  ARCHIVED
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  fullName  String
+  email     String
+  phone     String?
+  message   String
+  status    MessageStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@map("contact_messages")
+}
+
+// =============================================================================
+// FUTURE: job / ticket records
+// =============================================================================
+
+enum TicketStatus {
+  OPEN
+  SCHEDULED
+  IN_PROGRESS
+  AWAITING_PARTS
+  RESOLVED
+  CLOSED
+}
+
+model JobTicket {
+  id           String       @id @default(cuid())
+  reference    String       @unique
+  title        String
+  description  String
+  status       TicketStatus @default(OPEN)
+  assignedToId String?
+  assignedTo   User?        @relation("TicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([status, createdAt])
+  @@map("job_tickets")
+}
