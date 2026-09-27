@@ -23,6 +23,8 @@
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
+import { placeholderProjects } from "../src/content/placeholder-projects";
+
 const OUTPUT_DIR = path.join(process.cwd(), "public", "portfolio");
 
 const WIDTH = 1200;
@@ -32,7 +34,6 @@ const HEIGHT = 750;
 const NAVY_950 = "#0a1018";
 const NAVY_900 = "#0f1926";
 const NAVY_800 = "#16263a";
-const NAVY_700 = "#1e3550";
 const NAVY_600 = "#2a4a6b";
 const GOLD_500 = "#c9a227";
 const GOLD_400 = "#d9b64a";
@@ -200,30 +201,14 @@ function escapeXml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/**
- * Kept in sync with prisma/seed.ts. The slug list lives here rather than being
- * imported so this script stays runnable on its own.
- */
-const PROJECTS = [
-  "placeholder-software-maintenance",
-  "placeholder-software-installation",
-  "placeholder-networking",
-  "placeholder-graphics-design",
-  "placeholder-technology-sales",
-  "placeholder-it-consultancy",
-];
 
 function main(): void {
   if (!existsSync(OUTPUT_DIR)) {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  for (const slug of PROJECTS) {
-    const title = slug
-      .replace(/^placeholder-/, "")
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+  for (const project of placeholderProjects) {
+    const { slug, title } = project;
 
     const svg = buildSvg(slug, title);
     const file = path.join(OUTPUT_DIR, `${slug}.svg`);
@@ -231,9 +216,9 @@ function main(): void {
     console.log(`wrote ${path.relative(process.cwd(), file)}`);
   }
 
-  console.log(`\n${PROJECTS.length} placeholder covers generated.`);
+  console.log(`\n${placeholderProjects.length} placeholder covers generated.`);
   console.log(
-    "Replace with real project media by adding files to public/portfolio/ and updating coverImage in prisma/seed.ts.",
+    "Replace with real project media by adding files to public/portfolio/ and updating coverImage in src/content/placeholder-projects.ts.",
   );
 }
 

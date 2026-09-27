@@ -12,7 +12,9 @@
  *  2. `PortfolioProject` — clearly labelled placeholder entries only. No real
  *     client names, results or statistics are invented. Every row has
  *     `isPlaceholder: true`, which the UI uses to render a visible marker, and
- *     the body text says so explicitly.
+ *     the body text says so explicitly. The rows themselves come from
+ *     `src/content/placeholder-projects.ts`, which is shared with the cover
+ *     artwork generator and the service catalogue.
  *
  * The seed is idempotent (upsert by slug), so it is safe to re-run.
  *
@@ -25,6 +27,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { buildPoolConfig } from "../src/lib/db-config";
 import { services } from "../src/content/services";
+import { placeholderProjects } from "../src/content/placeholder-projects";
 
 // Prisma 7 no longer loads .env automatically, so it is loaded here rather than
 // relying on the CLI. Nothing in this script is ever bundled for the browser.
@@ -35,113 +38,6 @@ for (const file of [".env", ".env.local"]) {
 const prisma = new PrismaClient({
   adapter: new PrismaPg(buildPoolConfig(process.env.DATABASE_URL ?? "")),
 });
-
-/**
- * Placeholder portfolio entries.
- *
- * One per service so that every service detail page has something to link to.
- * Titles are deliberately generic and the Problem/Solution/Result fields state
- * plainly that this is sample content. Replace these rows with real projects as
- * they become available — no schema change is needed.
- */
-const PLACEHOLDER_PROJECTS = [
-  {
-    slug: "placeholder-software-maintenance",
-    title: "Software Maintenance Engagement",
-    category: "SOFTWARE" as const,
-    serviceSlug: "software-maintenance",
-    summary:
-      "Placeholder entry — a sample software maintenance engagement. Replace with a real completed project.",
-    problem:
-      "This is placeholder content. It does not describe a real engagement. A real entry would summarise the situation the client presented, such as declining performance, recurring faults or a failed update.",
-    solution:
-      "This is placeholder content. A real entry would explain the approach taken, what was changed and why that approach was chosen over the alternatives.",
-    toolsUsed: ["[PLACEHOLDER: tools used]"],
-    result:
-      "This is placeholder content. A real entry would state the outcome the client experienced. No figures have been supplied and none have been invented.",
-    coverImage: "/portfolio/placeholder-software-maintenance.svg",
-  },
-  {
-    slug: "placeholder-software-installation",
-    title: "Software Installation Project",
-    category: "SOFTWARE" as const,
-    serviceSlug: "software-installation",
-    summary:
-      "Placeholder entry — a sample software installation project. Replace with a real completed project.",
-    problem:
-      "This is placeholder content. It does not describe a real engagement. A real entry would summarise the starting position, such as a new machine requiring setup or software that needed correct installation and licensing.",
-    solution:
-      "This is placeholder content. A real entry would explain what was installed, how it was configured and how it was tested before handover.",
-    toolsUsed: ["[PLACEHOLDER: tools used]"],
-    result:
-      "This is placeholder content. A real entry would describe what the client was able to do once the work was complete.",
-    coverImage: "/portfolio/placeholder-software-installation.svg",
-  },
-  {
-    slug: "placeholder-networking",
-    title: "Network Setup Project",
-    category: "NETWORKING" as const,
-    serviceSlug: "networking",
-    summary:
-      "Placeholder entry — a sample networking project. Replace with a real completed project.",
-    problem:
-      "This is placeholder content. It does not describe a real engagement. A real entry would describe the connectivity problem, coverage requirement or equipment involved.",
-    solution:
-      "This is placeholder content. A real entry would explain the network design, equipment used and how coverage and access control were handled.",
-    toolsUsed: ["[PLACEHOLDER: tools used]"],
-    result:
-      "This is placeholder content. A real entry would describe the improvement in coverage, reliability or device access.",
-    coverImage: "/portfolio/placeholder-networking.svg",
-  },
-  {
-    slug: "placeholder-graphics-design",
-    title: "Graphics Design Project",
-    category: "GRAPHICS_DESIGN" as const,
-    serviceSlug: "graphics-design",
-    summary:
-      "Placeholder entry — a sample graphics design project. Replace with a real completed project.",
-    problem:
-      "This is placeholder content. It does not describe a real engagement. A real entry would describe the brand or marketing requirement the client needed support with.",
-    solution:
-      "This is placeholder content. A real entry would explain the design approach, the deliverables produced and the formats they were supplied in.",
-    toolsUsed: ["[PLACEHOLDER: design tools used]"],
-    result:
-      "This is placeholder content. A real entry would describe the assets delivered and where they were used.",
-    coverImage: "/portfolio/placeholder-graphics-design.svg",
-  },
-  {
-    slug: "placeholder-technology-sales",
-    title: "Technology Supply Project",
-    category: "COMPUTER_SERVICES" as const,
-    serviceSlug: "sales",
-    summary:
-      "Placeholder entry — a sample technology supply project. Replace with a real completed project.",
-    problem:
-      "This is placeholder content. It does not describe a real engagement. A real entry would describe the equipment requirement and why existing hardware was not sufficient.",
-    solution:
-      "This is placeholder content. A real entry would explain the specification chosen, the reasoning behind it and how it was delivered and configured.",
-    toolsUsed: ["[PLACEHOLDER: products supplied]"],
-    result:
-      "This is placeholder content. A real entry would describe what the client was able to do with the supplied equipment.",
-    coverImage: "/portfolio/placeholder-technology-sales.svg",
-  },
-  {
-    slug: "placeholder-it-consultancy",
-    title: "IT Consultancy Review",
-    category: "OTHER" as const,
-    serviceSlug: "consultancy",
-    summary:
-      "Placeholder entry — a sample consultancy engagement. Replace with a real completed project.",
-    problem:
-      "This is placeholder content. It does not describe a real engagement. A real entry would describe the decision the client needed advice on before committing budget.",
-    solution:
-      "This is placeholder content. A real entry would explain the assessment carried out and the recommendations made.",
-    toolsUsed: ["[PLACEHOLDER: tools used]"],
-    result:
-      "This is placeholder content. A real entry would describe the decision the client went on to take and why it was sound.",
-    coverImage: "/portfolio/placeholder-it-consultancy.svg",
-  },
-];
 
 async function seedServiceCategories(): Promise<void> {
   for (const [index, service] of services.entries()) {
@@ -163,7 +59,7 @@ async function seedServiceCategories(): Promise<void> {
 }
 
 async function seedPortfolioProjects(): Promise<void> {
-  for (const [index, project] of PLACEHOLDER_PROJECTS.entries()) {
+  for (const [index, project] of placeholderProjects.entries()) {
     const data = {
       title: project.title,
       summary: project.summary,
@@ -189,7 +85,7 @@ async function seedPortfolioProjects(): Promise<void> {
     });
   }
 
-  console.log(`Portfolio projects: ${PLACEHOLDER_PROJECTS.length} placeholder entries seeded.`);
+  console.log(`Portfolio projects: ${placeholderProjects.length} placeholder entries seeded.`);
 }
 
 /**
@@ -200,7 +96,7 @@ async function seedPortfolioProjects(): Promise<void> {
 function assertCatalogueMatchesContent(): void {
   const contentSlugs = new Set(services.map((service) => service.slug));
   const projectSlugs = new Set(
-    PLACEHOLDER_PROJECTS.map((project) => project.serviceSlug),
+    placeholderProjects.map((project) => project.serviceSlug),
   );
 
   for (const slug of projectSlugs) {

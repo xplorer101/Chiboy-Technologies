@@ -1,4 +1,5 @@
-import { Card, ServiceIcon, TrustIcon } from "@/components/ui/Card";
+import { Card, TrustIcon } from "@/components/ui/Card";
+import { ServiceCard } from "@/components/services/ServiceCard";
 import { Container, Section, SectionHeading } from "@/components/ui/Layout";
 import { ButtonLink } from "@/components/ui/Button";
 import { services } from "@/content/services";
@@ -63,48 +64,11 @@ export function ServicesPreview() {
 
         <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
-            <ServicePreviewCard key={service.slug} service={service} />
+            <ServiceCard key={service.slug} service={service} />
           ))}
         </ul>
       </Container>
     </Section>
-  );
-}
-
-function ServicePreviewCard({
-  service,
-}: {
-  service: (typeof services)[number];
-}) {
-  return (
-    <Card
-      as="li"
-      className="group relative h-full transition-shadow hover:shadow-[var(--shadow-lift)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-gold-600"
-    >
-      <span className="inline-grid size-11 place-items-center rounded-lg bg-navy-50 transition-colors group-hover:bg-navy-900">
-        <ServiceIcon
-          name={service.icon}
-          className="size-5 text-navy-700 transition-colors group-hover:text-gold-400"
-        />
-      </span>
-
-      <h3 className="mt-4 text-lg font-semibold text-navy-900">
-        <a href={`/services/${service.slug}`} className="after:absolute after:inset-0">
-          {/* The `::after` overlay stretches the hit area to the whole card
-              while the accessible name stays just the service name.
-
-              The text link deliberately keeps the global :focus-visible
-              outline; the card additionally shows a focus-within ring so
-              keyboard users can see which card they are on. Suppressing one
-              without replacing the other would break visible focus. */}
-          {service.name}
-        </a>
-      </h3>
-
-      <p className="mt-2 text-sm leading-relaxed text-charcoal-600">
-        {service.cardDescription}
-      </p>
-    </Card>
   );
 }
 
