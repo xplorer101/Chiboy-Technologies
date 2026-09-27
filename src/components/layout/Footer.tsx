@@ -2,9 +2,16 @@ import Link from "next/link";
 import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { PlaceholderValue } from "@/components/ui/Field";
-import { getContactDetails, navigation, site } from "@/content/site";
+import {
+  getContactDetails,
+  getEmailLink,
+  getMapsLink,
+  getPhoneLink,
+  getWhatsAppLink,
+  navigation,
+  site,
+} from "@/content/site";
 import { services } from "@/content/services";
-import { getWhatsAppLink } from "@/content/site";
 
 /**
  * Site footer. Renders on every page and links to every top-level destination,
@@ -91,31 +98,39 @@ export function Footer() {
 
             <ul className="mt-4 space-y-3.5 text-sm">
               <ContactRow icon={Phone} label="Phone">
-                <PlaceholderValue
-                  value={contact.phone}
-                  isPlaceholder={contact.isPhonePlaceholder}
-                />
+                {contact.isPhonePlaceholder ? (
+                  <PlaceholderValue value={contact.phone} isPlaceholder />
+                ) : (
+                  <FooterLink href={getPhoneLink()}>{contact.phone}</FooterLink>
+                )}
               </ContactRow>
 
               <ContactRow icon={MessageCircle} label="WhatsApp">
-                <PlaceholderValue
-                  value={contact.whatsapp}
-                  isPlaceholder={contact.isWhatsappPlaceholder}
-                />
+                {contact.isWhatsappPlaceholder ? (
+                  <PlaceholderValue value={contact.whatsapp} isPlaceholder />
+                ) : (
+                  <FooterLink href={getWhatsAppLink()} external>
+                    {contact.whatsapp}
+                  </FooterLink>
+                )}
               </ContactRow>
 
               <ContactRow icon={Mail} label="Email">
-                <PlaceholderValue
-                  value={contact.email}
-                  isPlaceholder={contact.isEmailPlaceholder}
-                />
+                {contact.isEmailPlaceholder ? (
+                  <PlaceholderValue value={contact.email} isPlaceholder />
+                ) : (
+                  <FooterLink href={getEmailLink()}>{contact.email}</FooterLink>
+                )}
               </ContactRow>
 
               <ContactRow icon={MapPin} label="Location">
-                <PlaceholderValue
-                  value={contact.location}
-                  isPlaceholder={contact.isLocationPlaceholder}
-                />
+                {contact.isLocationPlaceholder ? (
+                  <PlaceholderValue value={contact.location} isPlaceholder />
+                ) : (
+                  <FooterLink href={getMapsLink()} external>
+                    {contact.location}
+                  </FooterLink>
+                )}
               </ContactRow>
 
               <ContactRow icon={Clock} label="Hours">
@@ -144,12 +159,19 @@ export function Footer() {
           <p>
             &copy; {year} {site.name}. All rights reserved.
           </p>
-          <p className="text-charcoal-400">
-            Service areas and contact details:{" "}
-            <PlaceholderValue
-              value={contact.location}
-              isPlaceholder={contact.isLocationPlaceholder}
-            />
+
+          {/* Service area is still unconfirmed, so it is labelled as pending
+              rather than implying the office address is the whole coverage
+              area. */}
+          <p className="flex items-center gap-1.5 text-charcoal-400">
+            <MapPin className="size-4 shrink-0" aria-hidden="true" />
+            {contact.isLocationPlaceholder ? (
+              <PlaceholderValue value={contact.location} isPlaceholder />
+            ) : (
+              <FooterLink href={getMapsLink()} external>
+                {contact.location}
+              </FooterLink>
+            )}
           </p>
         </div>
       </div>
@@ -174,6 +196,39 @@ function ContactRow({
         {children}
       </span>
     </li>
+  );
+}
+
+/**
+ * A contact value that is a real, actionable link.
+ *
+ * `href` is nullable by design: if a value is present but a link could not be
+ * built safely (an implausible phone number, an address-less email), the text
+ * still renders as plain text rather than a broken link. External links carry
+ * `rel="noopener noreferrer"`, and the underline is always visible so they are
+ * distinguishable from static text without relying on colour alone.
+ */
+function FooterLink({
+  href,
+  children,
+  external = false,
+}: {
+  href: string | null;
+  children: React.ReactNode;
+  external?: boolean;
+}) {
+  if (!href) {
+    return <span className="text-charcoal-300">{children}</span>;
+  }
+
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className="rounded text-charcoal-300 underline decoration-charcoal-500 underline-offset-2 transition-colors hover:text-gold-400 hover:decoration-gold-400"
+    >
+      {children}
+    </a>
   );
 }
 

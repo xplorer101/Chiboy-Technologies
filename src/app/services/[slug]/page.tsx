@@ -13,7 +13,12 @@ import { ProjectCard } from "@/components/portfolio/ProjectCard";
 import { CtaBand } from "@/components/layout/Footer";
 
 import { getService, services } from "@/content/services";
-import { site, workflowSteps, getWhatsAppLink } from "@/content/site";
+import {
+  getServiceArea,
+  getWhatsAppLink,
+  site,
+  workflowSteps,
+} from "@/content/site";
 import { getProjectsBySlugs, type PortfolioCard } from "@/lib/portfolio";
 
 /**
@@ -100,6 +105,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   // Everything except the current service, so a visitor who picked the wrong
   // page can self-serve instead of going back to the overview.
   const otherServices = services.filter((item) => item.slug !== service.slug);
+
+  const serviceArea = getServiceArea();
 
   const crumbs = [
     { label: "Home", href: "/" },
@@ -325,7 +332,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               serviceType: service.name,
               url: `/services/${service.slug}`,
               provider: { "@type": "Organization", name: site.name },
-              areaServed: "[PLACEHOLDER: service area]",
+              // Omitted while the service area is unconfirmed — see the note
+              // on the homepage's structured data.
+              ...(serviceArea ? { areaServed: serviceArea } : {}),
               hasOfferCatalog: {
                 "@type": "OfferCatalog",
                 name: `${service.name} — what is included`,

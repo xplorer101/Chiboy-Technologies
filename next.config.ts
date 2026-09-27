@@ -56,6 +56,27 @@ const nextConfig: NextConfig = {
 
   reactStrictMode: true,
 
+  /**
+   * Development-only: permits hot-reload resources to be served when the dev
+   * server is reached from another device on the local network (a phone or a
+   * second laptop testing the mobile layout). Without this, Next.js blocks the
+   * HMR websocket as cross-origin and the page never hot-reloads.
+   *
+   * Development only by construction — this has no effect on a production
+   * build, and no host is trusted beyond what the developer types here.
+   */
+  ...(isDev
+    ? {
+        allowedDevOrigins: [
+          "localhost",
+          "127.0.0.1",
+          // Private address ranges, for testing on a phone or another device.
+          "192.168.*.*",
+          "10.*.*.*",
+        ],
+      }
+    : {}),
+
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

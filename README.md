@@ -5,9 +5,10 @@ computer software maintenance, software installation and configuration, computer
 troubleshooting and support, networking, graphics design, technology sales and
 IT consultancy.
 
-> **Status: work in progress.** Phases 1–2 complete (architecture, database,
-> design system). Business contact details and portfolio projects are
-> placeholders pending real information from the company.
+> **Status: work in progress.** Phases 1–4 complete (architecture, database,
+> design system, homepage, services). Real business contact details are
+> configured. Portfolio projects remain placeholders pending real work from the
+> company. See [Outstanding placeholders](#outstanding-placeholders).
 
 ---
 
@@ -38,6 +39,7 @@ IT consultancy.
 | Validation | Zod 4 | Same schemas used for client and server validation |
 | Forms | React Hook Form | Uncontrolled inputs keep the form bundle small |
 | Icons | Lucide React | Tree-shakeable |
+| Font | Plus Jakarta Sans, **self-hosted** via `next/font/local` | The woff2 is committed to the repo, so builds never depend on reaching Google |
 | Tests | Vitest | Unit tests for security-critical pure logic |
 | Deploy target | Vercel | Native support for the App Router and Server Actions |
 
@@ -47,6 +49,24 @@ IT consultancy.
   points at a release candidate. A live business site should not run on an RC.
 - **TypeScript 5.9.3, not 7.0.2.** `latest` is the new native (Go) compiler.
   The 5.x line is the safe choice today; upgrading later is a version bump.
+
+### Why the font is self-hosted rather than `next/font/google`
+
+`next/font/google` downloads the woff2 from `fonts.gstatic.com` **at build
+time**. On a restricted or unreliable network that fails the production build
+outright, with no local fallback — and it was hit for real here, because
+`fonts.gstatic.com` resolves to an IPv6-only address on this network.
+
+`src/assets/fonts/plus-jakarta-sans-latin-variable.woff2` (27 KB, variable
+across weights 200–800) is committed instead and loaded with
+`next/font/local`. Builds are then reproducible and work offline, the site
+never depends on a third party being reachable, and `next/font` still
+self-hosts it with a hashed filename, a `<link rel="preload">` and automatic
+fallback metrics — so there is still no layout shift and no render-blocking
+request to an external origin.
+
+The latin subset is the whole site (`lang="en-GB"`), so no unicode-range
+splitting is needed.
 
 ### Why Server Actions rather than API routes
 
@@ -115,11 +135,12 @@ values**. `.env.local` is gitignored and must never be committed.
 | `DATABASE_URL` | yes | Pooled runtime connection |
 | `DIRECT_URL` | migrations | Direct (non-pooled) connection for the Prisma CLI |
 | `NEXT_PUBLIC_SITE_URL` | yes | Canonical origin for metadata, OG tags and `sitemap.xml` |
-| `NEXT_PUBLIC_PHONE_NUMBER` | placeholder | Display phone number |
-| `NEXT_PUBLIC_WHATSAPP_NUMBER` | placeholder | Floating WhatsApp button — digits only, no `+` or spaces |
-| `NEXT_PUBLIC_BUSINESS_EMAIL` | placeholder | Display email address |
-| `NEXT_PUBLIC_BUSINESS_LOCATION` | placeholder | Location / service area |
-| `NEXT_PUBLIC_BUSINESS_HOURS` | placeholder | Business hours |
+| `NEXT_PUBLIC_PHONE_NUMBER` | set | Display phone number, and the header's `tel:` link |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | set | Floating WhatsApp button. Same display form; digits are extracted for `wa.me` |
+| `NEXT_PUBLIC_BUSINESS_EMAIL` | set | Display email, and the `mailto:` link |
+| `NEXT_PUBLIC_BUSINESS_LOCATION` | set | Office address, and the maps link |
+| `NEXT_PUBLIC_BUSINESS_HOURS` | set | Display hours, parsed into ISO 8601 for structured data |
+| `NEXT_PUBLIC_SERVICE_AREA` | no | Area served. Omitted from structured data while unset — **not** inferred from the address |
 | `CONTACT_NOTIFICATION_EMAIL` | no | Where form submissions are delivered |
 | `RESEND_API_KEY` | no | Email delivery. If unset, submissions are stored only |
 | `UPSTASH_REDIS_REST_URL` | production | Redis REST endpoint for rate limiting |
@@ -132,6 +153,13 @@ unresolved. The UI renders them in a visibly marked state and suppresses
 features that would be broken by them (for example, the floating WhatsApp button
 is not rendered at all while the number is a placeholder, rather than linking to
 a dead contact).
+
+**Nothing is ever derived that was not supplied.** Contact links are built by
+helpers that validate before use, so a malformed value is rejected rather than
+turned into a plausible-but-wrong `tel:` target. Structured-data fields whose
+value is missing or unparseable are omitted from the JSON-LD entirely — an
+absent field is better than a wrong one, and far better than emitting a literal
+`[PLACEHOLDER: ...]` string for a search engine to index.
 
 ---
 
@@ -299,8 +327,10 @@ that can reach the database.
 These are the items that must be resolved first — see
 [Outstanding placeholders](#outstanding-placeholders).
 
-1. **Real business contact details.** Until `NEXT_PUBLIC_WHATSAPP_NUMBER` is a
-   real number, the floating WhatsApp button is not rendered at all.
+1. **Rotate the Supabase secrets.** They were pasted into a chat session during
+   setup. Rotate `SUPABASE_SECRET_KEY` / `SUPABASE_SERVICE_ROLE_KEY` /
+   `SUPABASE_JWT_SECRET` before going live. Only the two database connection
+   strings were used by this project.
 2. **`NEXT_PUBLIC_SITE_URL` must be the real domain**, or canonical URLs, Open
    Graph tags and the sitemap will all point at the wrong origin.
 3. **File storage.** Uploads are currently written to `private-uploads/` on the
@@ -360,20 +390,44 @@ Known trade-offs, stated plainly:
 
 ## Outstanding placeholders
 
-The following are **placeholders, not real information**. Nothing has been
-invented. Each is visible on the site in a clearly marked state.
+Nothing below has been invented. Each item is either still unset, or marked
+visibly on the site as awaiting confirmation.
+
+### Supplied — no longer placeholders
+
+| Value | Notes |
+|---|---|
+| Phone / WhatsApp | `+2348102854969` (both) — drives the header call link, footer, CTA band and floating button |
+| Email | `chiboytechnologies@gmail.com` |
+| Office address | Suite 12, City Shoppers Plaza, Kuje, FCT Abuja |
+| Business hours | Monday to Friday, 8:00am – 6:00pm |
+
+Hours are stored as display text and parsed into ISO 8601 (`Mo-Fr 08:00-18:00`)
+for structured data. Anything the parser does not fully understand is **omitted
+rather than guessed at**, so a reworded value can never publish wrong opening
+hours.
+
+### Still outstanding
 
 | Placeholder | Where it appears | Needed |
 |---|---|---|
-| Business phone number | Header, footer, contact | Real number |
-| WhatsApp number | Floating button, CTA band, footer | Real number, digits only |
-| Business email | Footer, contact, notifications | Real address |
-| Business location / service area | Footer, contact | Real location |
-| Business hours | Footer, contact | Real hours |
-| Years in business | About page | Real figure |
+| Years in business | About page | Real figure, or a decision to state none |
 | Portfolio projects | `/portfolio`, service pages | Real projects with images, or confirmation to keep placeholders |
 | Legal entity name | Privacy policy | Registered name, if it should appear |
 | Notification destination | Form submissions | Inbox or webhook |
+| Service area | Structured data only | Which areas are covered — deliberately **not** inferred from the office address, and omitted until confirmed |
+| Production domain | Canonical URLs, sitemap, OG tags | `NEXT_PUBLIC_SITE_URL` in production |
+
+### Operational items before go-live
+
+- [ ] **Rotate the Supabase secrets** (`SUPABASE_SECRET_KEY` /
+      `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_JWT_SECRET`). They were pasted into
+      a chat session and must be treated as exposed. Only the two database
+      connection strings were used by this project.
+- [ ] Choose a file-storage provider for service-request uploads (see
+      [File uploads](#file-uploads)).
+- [ ] Provision Upstash Redis for production rate limiting, or confirm the
+      in-memory fallback is acceptable at the expected traffic.
 
 ---
 

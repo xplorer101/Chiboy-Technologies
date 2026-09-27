@@ -7,7 +7,7 @@ import {
 } from "@/components/sections/HomeSections";
 import { CtaBand } from "@/components/layout/Footer";
 import { getPublishedProjects } from "@/lib/portfolio";
-import { site } from "@/content/site";
+import { getServiceArea, site } from "@/content/site";
 import { services } from "@/content/services";
 
 /**
@@ -37,6 +37,7 @@ export default async function HomePage() {
   // Three preview cards is enough to establish that work is shown without
   // turning the homepage into a second portfolio page.
   const projects = await getPublishedProjects(3);
+  const serviceArea = getServiceArea();
 
   return (
     <>
@@ -55,7 +56,11 @@ export default async function HomePage() {
             "@type": "ProfessionalService",
             name: site.name,
             description: site.description,
-            areaServed: "[PLACEHOLDER: service area]",
+            // Omitted entirely while the service area is unconfirmed. Emitting
+            // a placeholder string here would put a literal "[PLACEHOLDER:
+            // service area]" into structured data, which search engines would
+            // read as the business's actual service area.
+            ...(serviceArea ? { areaServed: serviceArea } : {}),
             hasOfferCatalog: {
               "@type": "OfferCatalog",
               name: "Technology services",

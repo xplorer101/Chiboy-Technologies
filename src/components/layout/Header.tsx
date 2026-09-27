@@ -22,7 +22,24 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function Header({ phone }: { phone: string }) {
+/**
+ * `phone` is the display string, `phoneHref` the validated `tel:` link.
+ *
+ * Both are produced by the server layout rather than built here: this is a
+ * client component, and the link must be constructed by the same validated
+ * helper the footer uses. Building it locally previously stripped the "+",
+ * producing a `tel:` link with no country code that would not connect from
+ * outside the local country. Rendering requires BOTH — a value with no safe
+ * link is shown nowhere rather than as a dead link.
+ */
+export function Header({
+  phone,
+  phoneHref,
+}: {
+  phone: string;
+  phoneHref?: string;
+}) {
+  const showPhone = Boolean(phone) && Boolean(phoneHref);
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -105,9 +122,9 @@ export function Header({ phone }: { phone: string }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          {phone ? (
+          {showPhone ? (
             <a
-              href={`tel:${phone.replace(/\D/g, "")}`}
+              href={phoneHref}
               className="hidden min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-navy-800 transition-colors hover:bg-charcoal-100 lg:inline-flex"
             >
               <Phone className="size-4" aria-hidden="true" />
@@ -190,9 +207,9 @@ export function Header({ phone }: { phone: string }) {
                   Request a Service
                 </ButtonLink>
 
-                {phone ? (
+                {showPhone ? (
                   <a
-                    href={`tel:${phone.replace(/\D/g, "")}`}
+                    href={phoneHref}
                     className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-charcoal-300 text-base font-semibold text-navy-900"
                   >
                     <Phone className="size-4" aria-hidden="true" />
