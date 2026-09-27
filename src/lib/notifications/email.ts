@@ -59,22 +59,20 @@ export async function sendServiceRequestEmail(
   config: { apiKey: string; ownerEmail: string; fromDomain?: string },
 ): Promise<NotificationResult> {
   const resend = new Resend(config.apiKey);
+  const fromAddress = `CHIBOY TECHNOLOGIES <${resendFromAddress(config.fromDomain)}>`;
+
+  console.log(`[notify:email] Attempting to send to ${config.ownerEmail} from ${fromAddress} (reference: ${request.reference})`);
 
   try {
     const send = resend.emails.send(
       {
-        // Assembled in one place, as a complete address. See `resendFromAddress`.
-        from: `CHIBOY TECHNOLOGIES <${resendFromAddress(config.fromDomain)}>`,
+        from: fromAddress,
         to: [config.ownerEmail],
         replyTo: request.email,
         subject: serviceRequestEmailSubject(request.service),
         text: serviceRequestEmailBody(request),
       },
       {
-        // The reference is unique per request and stable across attempts, so a
-        // retry of the same submission — whether a manual one or a future retry
-        // feature — resolves to the same email instead of delivering a second
-        // copy of an enquiry the owner is already looking at.
         idempotencyKey: request.reference,
       },
     );
@@ -82,18 +80,19 @@ export async function sendServiceRequestEmail(
     const result = await withDeadline(send, SEND_TIMEOUT_MS);
 
     if (result.timedOut) {
+      console.log(`[notify:email] TIMEOUT after ${SEND_TIMEOUT_MS}ms (reference: ${request.reference})`);
       return { ok: false, channel: "email", reason: `timed out after ${SEND_TIMEOUT_MS}ms` };
     }
 
-    // Resend resolves rather than rejects on an API-level rejection, putting the
-    // failure in the result. Checking only the thrown error would report every
-    // rejected send as a success.
     if (result.value.error) {
+      console.log(`[notify:email] Resend API error: ${result.value.error.message} (reference: ${request.reference})`);
       return { ok: false, channel: "email", reason: redact(result.value.error.message) };
     }
 
+    console.log(`[notify:email] SUCCESS: Resend accepted (id: ${result.value.data?.id ?? "unknown"}) (reference: ${request.reference})`);
     return { ok: true };
   } catch (error) {
+    console.log(`[notify:email] EXCEPTION: ${describe(error)} (reference: ${request.reference})`);
     return { ok: false, channel: "email", reason: redact(describe(error)) };
   }
 }

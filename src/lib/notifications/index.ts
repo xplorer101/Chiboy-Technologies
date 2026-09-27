@@ -55,6 +55,8 @@ export async function notifyNewServiceRequest(
 ): Promise<NotificationOutcome> {
   const config = getNotificationConfig();
 
+  console.log(`[notify] ${request.reference}: config check — email=${config.email ? "configured" : "skipped"} whatsapp=${config.whatsapp ? "configured" : "skipped"}`);
+
   const outcomes: NotificationOutcome = {
     email: config.email ? "failed" : "skipped",
     whatsapp: config.whatsapp ? "failed" : "skipped",
@@ -76,6 +78,8 @@ export async function notifyNewServiceRequest(
 
   record(outcomes, "email", config.email !== null, emailResult);
   record(outcomes, "whatsapp", config.whatsapp !== null, whatsappResult);
+
+  console.log(`[notify] ${request.reference}: results — email=${outcomes.email} whatsapp=${outcomes.whatsapp}${outcomes.reasons.length > 0 ? ` reasons: ${outcomes.reasons.join("; ")}` : ""}`);
 
   if (outcomes.reasons.length > 0) {
     // Logged, not returned. The visitor has already been told the request was
