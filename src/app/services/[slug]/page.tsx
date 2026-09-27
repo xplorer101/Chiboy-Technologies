@@ -145,7 +145,15 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <ButtonLink href="/request-service" variant="accent" size="lg">
+                {/* Carries the slug so the request form arrives with this
+                    service already chosen. Someone who has read this page and
+                    pressed the button has told us which service they want; asking
+                    them again is a question they have already answered. */}
+                <ButtonLink
+                  href={`/request-service?service=${service.slug}`}
+                  variant="accent"
+                  size="lg"
+                >
                   Request a Service
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </ButtonLink>

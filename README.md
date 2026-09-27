@@ -18,6 +18,7 @@ IT consultancy.
 - [Requirements](#requirements)
 - [Getting started](#getting-started)
 - [Environment variables](#environment-variables)
+- [Form notifications](#form-notifications)
 - [Commands](#commands)
 - [Project structure](#project-structure)
 - [Brand assets](#brand-assets)
@@ -52,6 +53,10 @@ IT consultancy.
   points at a release candidate. A live business site should not run on an RC.
 - **TypeScript 5.9.3, not 7.0.2.** `latest` is the new native (Go) compiler.
   The 5.x line is the safe choice today; upgrading later is a version bump.
+- **resend 6.30.0**, the current stable release. Verified to contribute no known
+  advisories; the four high-severity ones `npm audit` reports are pre-existing,
+  come from the Prisma CLI, and "fix" by downgrading Prisma across a major
+  version.
 
 ### Why the font is self-hosted rather than `next/font/google`
 
@@ -87,6 +92,91 @@ enough to unit test. When Redis is not configured it falls back to an in-memory
 window so local development needs no external service — but **production
 rate limiting across serverless instances requires `UPSTASH_REDIS_REST_URL` and
 `UPSTASH_REDIS_REST_TOKEN` to be set.**
+
+---
+
+## Form notifications
+
+When a service request is submitted, two independent channels may notify the
+business: **email** via Resend, and **WhatsApp** via CallMeBot. Both are optional
+and configured separately — set one, both, or neither.
+
+### The one rule that matters
+
+> **The database write is the submission. The notification is a copy of it.**
+
+Notifications run *after* the row is committed, and their outcome is never
+allowed to affect what the visitor is told. If Resend is down, the owner does not
+hear about the enquiry — but the enquiry *is* in the database, and the visitor is
+correctly told it was received. Failing the submission instead would be a lie
+that costs a duplicate request and an apology. So:
+
+| Outcome | Visitor sees |
+|---|---|
+| Database write fails | An error, and an invitation to call or WhatsApp |
+| Database write succeeds, both channels fail | **Success.** A warning is logged |
+| Database write succeeds, one channel fails | **Success.** A warning names the failed channel |
+| Neither channel configured | **Success.** A warning says the request is only in the database |
+
+The last row is the one to check after configuring. A request that is stored and
+never seen by anyone is the failure mode with no user-facing symptom, so
+`src/lib/notifications/index.ts` logs it explicitly.
+
+### Channel setup
+
+**Email (Resend).** Create a key at <https://resend.com/api-keys> and set
+`RESEND_API_KEY` plus `OWNER_EMAIL`. `RESEND_FROM_DOMAIN` is optional: Resend's
+onboarding domain delivers only to the address on the Resend account, which is
+sufficient because these notifications go to the owner. A verified domain is
+needed only to send to anyone else. Each send carries the request's `reference`
+as its idempotency key, so a retry cannot produce a second copy of the same
+enquiry.
+
+**WhatsApp (CallMeBot).** The owner's phone number must first **send the
+activation message to the CallMeBot number** (+34 644 44 21 48). Until that is
+done, every request returns HTTP 200 with a body saying the number is not
+activated. `isRejection()` in `src/lib/notifications/whatsapp.ts` reads that body
+rather than trusting the status code, and defaults to *failure* for any response
+it does not recognise — a missed notification is one log line, a falsely reported
+delivery is a customer waiting for a call that nothing prompted.
+
+The WhatsApp Cloud API is the official alternative and needs no activation step,
+but requires a Meta business account, a verified sender and an approved template.
+CallMeBot is one API key and works today.
+
+### Behaviour worth knowing
+
+- **Parallel, not sequential.** Both channels are started together with
+  `Promise.allSettled`, so a visitor waits for the slower one rather than the sum
+  of both, and one channel's failure never discards the other's result. They are
+  awaited rather than fired-and-forgotten because a serverless runtime may freeze
+  the instance before an un-awaited promise completes.
+- **Both are bounded.** WhatsApp uses `AbortSignal.timeout` on `fetch`, which
+  genuinely cancels. The Resend SDK exposes no `signal` or timeout option, so the
+  email path races the call against an 8-second deadline and stops *waiting* —
+  the request itself is left to finish, which costs nothing on a serverless host
+  but is noted in `email.ts` for anyone moving to a long-lived server.
+- **Plain text, not HTML.** Every value in a notification came from a public form.
+  In an HTML body that is an injection surface; there is no markup in a
+  plain-text body, so the problem does not exist.
+- **No credential ever reaches a log.** The CallMeBot API key travels in a query
+  string, so `redact()` reduces the whole URL to its origin before logging, and
+  replaces the configured key wherever it appears.
+- **The contact form does not notify yet.** `notifyNewServiceRequest()` is
+  service-request specific; the channel senders are reusable, and wiring
+  `/contact` up is a matter of calling them with the contact message's fields.
+
+### Verifying it works
+
+Submit a request through `/request-service`, then check:
+
+1. The `service_requests` table has the row (`reference` is shown to the
+   visitor, so it can be matched).
+2. The owner's inbox received the email, **and** that replying reaches the
+   visitor — `replyTo` is their address, which is worth confirming once.
+3. WhatsApp received the message. If not, the activation step above is the first
+   thing to check.
+4. The server log shows `sent/sent`, or names the channel that failed.
 
 ---
 
@@ -144,8 +234,11 @@ values**. `.env.local` is gitignored and must never be committed.
 | `NEXT_PUBLIC_BUSINESS_LOCATION` | set | Office address, and the maps link |
 | `NEXT_PUBLIC_BUSINESS_HOURS` | set | Display hours, parsed into ISO 8601 for structured data |
 | `NEXT_PUBLIC_SERVICE_AREA` | no | Area served. Omitted from structured data while unset — **not** inferred from the address |
-| `CONTACT_NOTIFICATION_EMAIL` | no | Where form submissions are delivered |
-| `RESEND_API_KEY` | no | Email delivery. If unset, submissions are stored only |
+| `OWNER_EMAIL` | no | Address new service requests are notified to. Replaces `CONTACT_NOTIFICATION_EMAIL` |
+| `RESEND_API_KEY` | no | Resend API key for the email channel. If unset, no email is attempted |
+| `RESEND_FROM_DOMAIN` | no | Verified sending domain. Falls back to Resend's onboarding domain, which only delivers to the account's own address — enough here |
+| `CALLMEBOT_PHONE` | no | Owner's WhatsApp number for the WhatsApp channel. Normalised to bare digits |
+| `CALLMEBOT_APIKEY` | no | CallMeBot key. If unset, no WhatsApp message is attempted |
 | `UPSTASH_REDIS_REST_URL` | production | Redis REST endpoint for rate limiting |
 | `UPSTASH_REDIS_REST_TOKEN` | production | Redis REST token |
 | `UPLOAD_DIR` | no | Defaults to `private-uploads` |
@@ -230,6 +323,7 @@ absent field is better than a wrong one, and far better than emitting a literal
     │   ├── portfolio-categories.ts   Category list, labels, ?category= parsing
     │   ├── portfolio-jsonld.ts Portfolio structured data (placeholder-safe)
     │   ├── upload/            Magic-byte sniffing and storage
+    │   ├── notifications/     Resend + CallMeBot, and the pure templates
     │   ├── validation/        Shared Zod schemas
     │   ├── actions/           Server Actions
     │   └── auth/              Future auth seam
@@ -547,10 +641,18 @@ These are the items that must be resolved first — see
 4. **Production rate limiting.** Set `UPSTASH_REDIS_REST_URL` and
    `UPSTASH_REDIS_REST_TOKEN`, or the forms will use the in-memory fallback,
    which does not work across serverless instances.
-5. **Notification delivery.** Set `CONTACT_NOTIFICATION_EMAIL` and a mail
-   provider, otherwise submissions are stored but nobody is notified.
+5. **Notification delivery.** Set at least one channel — `OWNER_EMAIL` +
+   `RESEND_API_KEY` for email, or `CALLMEBOT_PHONE` + `CALLMEBOT_APIKEY` for
+   WhatsApp — otherwise submissions are stored but nobody is notified. See
+   [Form notifications](#form-notifications). The WhatsApp channel also needs the
+   one-time activation message sent from the owner's phone.
 6. **Privacy policy.** Currently a clearly-marked draft that needs review
-   against your actual data handling.
+   against your actual data handling. If either notification channel stays
+   enabled, it names the processors involved, so it must be kept accurate. Note
+   that `/privacy` is statically rendered and reads the environment at **build**
+   time, so enabling a channel is not enough on its own — the site must be
+   rebuilt before the policy starts naming that provider. Rebuilding is the same
+   step that deploys, so this applies naturally in production.
 
 ---
 
@@ -578,6 +680,14 @@ Implemented:
   it into a client component becomes a build error rather than shipping your
   database URL to browsers.
 - **Rate limiting** on all public form submissions.
+- **Notification credentials cannot leak into logs.** The CallMeBot API key
+  travels in a query string, so `redact()` reduces the entire URL to its origin
+  before it is logged and replaces the configured key wherever it appears in an
+  error body — Resend and CallMeBot both echo request detail back. Notification
+  failures log a channel, a reference and a reason, never a message body.
+- **Notification failures are contained, not propagated.** A third-party outage
+  cannot fail a submission that is already stored, so it cannot be used to
+  produce an error page after a successful write.
 
 Known trade-offs, stated plainly:
 
@@ -638,9 +748,15 @@ hours.
 |---|---|---|
 | Portfolio projects | `/portfolio`, `/portfolio/{slug}`, service pages | Real projects with photography. 18 sample entries are live, each badged "Placeholder" |
 | Legal entity name | Privacy policy | Registered name, if it should appear |
-| Notification destination | Form submissions | Inbox or webhook |
+| Notification destination | Form submissions | Which address `OWNER_EMAIL` should be, and whether to keep the WhatsApp channel |
 | Service area | Structured data only | Which areas are covered — deliberately **not** inferred from the office address, and omitted until confirmed |
 | Production domain | Canonical URLs, sitemap, OG tags | `NEXT_PUBLIC_SITE_URL` in production |
+
+The notification code is built and wired, but **no credentials have been
+supplied**, so neither channel has been exercised against the real services. The
+code paths, the failure handling and the formatting are tested; the live
+delivery is not. Configure at least one channel and confirm it with a real
+submission before relying on it.
 
 ### Operational items before go-live
 

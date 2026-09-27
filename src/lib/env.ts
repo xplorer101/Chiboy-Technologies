@@ -28,13 +28,42 @@ const serverEnvSchema = z.object({
 
   DIRECT_URL: z.string().optional(),
 
-  CONTACT_NOTIFICATION_EMAIL: z
+  /**
+   * Where form notifications are delivered.
+   *
+   * Was `CONTACT_NOTIFICATION_EMAIL`, which was declared here from Phase 1 but
+   * never read. Renamed to `OWNER_EMAIL` and kept as the single name for this
+   * job: two variables for one destination means one of them gets set, the
+   * other does not, and nothing is delivered.
+   */
+  OWNER_EMAIL: z
     .string()
-    .email("CONTACT_NOTIFICATION_EMAIL must be a valid email address")
+    .email("OWNER_EMAIL must be a valid email address")
     .optional()
     .or(z.literal("")),
 
   RESEND_API_KEY: z.string().optional(),
+
+  /**
+   * The domain Resend sends from.
+   *
+   * Optional because Resend has an onboarding domain that only delivers to the
+   * account's own address — which is exactly the case here, since these emails
+   * go to the business owner. A verified domain is only needed to send to
+   * anyone else, and is not required for the notification to work.
+   */
+  RESEND_FROM_DOMAIN: z.string().optional().or(z.literal("")),
+
+  /**
+   * The owner's WhatsApp number, in display form.
+   *
+   * Validated as a plausible international number, and normalised to bare digits
+   * before it reaches CallMeBot, which rejects punctuation. The same reasoning
+   * as `getPhoneLink`: a mistyped number here means notifications silently never
+   * arrive, so the check is at configuration time where it is visible.
+   */
+  CALLMEBOT_PHONE: z.string().optional().or(z.literal("")),
+  CALLMEBOT_APIKEY: z.string().optional(),
 
   UPSTASH_REDIS_REST_URL: z.string().url().optional().or(z.literal("")),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional().or(z.literal("")),
@@ -54,8 +83,11 @@ export function getServerEnv(): ServerEnv {
   const parsed = serverEnvSchema.safeParse({
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
-    CONTACT_NOTIFICATION_EMAIL: process.env.CONTACT_NOTIFICATION_EMAIL,
+    OWNER_EMAIL: process.env.OWNER_EMAIL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_DOMAIN: process.env.RESEND_FROM_DOMAIN,
+    CALLMEBOT_PHONE: process.env.CALLMEBOT_PHONE,
+    CALLMEBOT_APIKEY: process.env.CALLMEBOT_APIKEY,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     UPLOAD_DIR: process.env.UPLOAD_DIR,
@@ -76,6 +108,96 @@ export function hasRedisConfig(): boolean {
   return Boolean(
     process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
   );
+}
+
+/**
+ * Reads only the rate limiter's two variables.
+ *
+ * Deliberately separate from `getServerEnv()`. The limiter has no use for
+ * `DATABASE_URL`, and calling the full validator would make "a rate limit
+ * cannot be checked" a consequence of "the database is not configured" — two
+ * unrelated failures that would fail the whole form together.
+ */
+export function getRateLimitConfig(): { url: string; token: string } | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  return url && token ? { url, token } : null;
+}
+
+/**
+ * The notification channels that are actually configured.
+ *
+ * Each channel is reported independently rather than as one "notifications on or
+ * off" flag, because they are configured independently and a half-configured
+ * setup is the normal state during development. Reporting them separately lets
+ * the caller skip what is missing and say which, instead of discovering a missing
+ * variable by catching an exception at send time.
+ *
+ * Only the notification variables are read. As with the rate limiter, calling
+ * the full `getServerEnv()` would make "notifications are not configured" a
+ * consequence of "the database is not configured".
+ */
+export type NotificationConfig = {
+  email: { apiKey: string; ownerEmail: string; fromDomain: string } | null;
+  whatsapp: { apiKey: string; phone: string } | null;
+};
+
+/**
+ * Resend's onboarding domain.
+ *
+ * Delivers only to the account's own address, which is all this project needs,
+ * and it is why the site can be fully configured without a verified domain.
+ * Falling back to it means a missing `RESEND_FROM_DOMAIN` is not a failure.
+ */
+const RESEND_ONBOARDING_DOMAIN = "onboarding@resend.dev";
+
+export function getNotificationConfig(): NotificationConfig {
+  const ownerEmail = process.env.OWNER_EMAIL?.trim() ?? "";
+  const resendKey = process.env.RESEND_API_KEY?.trim() ?? "";
+  const botKey = process.env.CALLMEBOT_APIKEY?.trim() ?? "";
+  const botPhone = normaliseWhatsAppNumber(process.env.CALLMEBOT_PHONE);
+  const fromDomain = process.env.RESEND_FROM_DOMAIN?.trim() ?? "";
+
+  return {
+    // Both halves are required. A key with no recipient would send mail to
+    // Resend's own bounce address, and a recipient with no key cannot be sent to.
+    email:
+      resendKey && ownerEmail
+        ? {
+            apiKey: resendKey,
+            ownerEmail,
+            fromDomain:
+              fromDomain && RESEND_DOMAIN_PATTERN.test(fromDomain)
+                ? fromDomain
+                : RESEND_ONBOARDING_DOMAIN,
+          }
+        : null,
+    whatsapp:
+      botKey && botPhone.length >= 8
+        ? { apiKey: botKey, phone: botPhone }
+        : null,
+  };
+}
+
+const RESEND_DOMAIN_PATTERN = /^[a-z0-9.-]+$/i;
+
+/**
+ * Reduces a WhatsApp number to bare international digits.
+ *
+ * CallMeBot rejects anything else, and a number that is rejected silently means
+ * no notification. Returns an empty string for anything that is not a plausible
+ * international number, so the channel reports itself unconfigured rather than
+ * failing at send time.
+ */
+export function normaliseWhatsAppNumber(raw: string | undefined): string {
+  if (!raw) return "";
+  if (isPlaceholder(raw)) return "";
+
+  const digits = raw.replace(/\D/g, "").replace(/^0+/, (run) => (run.length > 1 ? run.slice(1) : run));
+
+  // 8 is the shortest plausible E.164 national significant number; 15 is the
+  // E.164 maximum, and anything longer is a typo rather than a number.
+  return digits.length >= 8 && digits.length <= 15 ? digits : "";
 }
 
 const publicEnvSchema = z.object({
