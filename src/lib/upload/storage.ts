@@ -60,11 +60,30 @@ export type StoredAttachment = {
   sizeBytes: number;
 };
 
-/** Why an upload was refused. Every case maps to one safe visitor message. */
-export type UploadRejection = {
+/**
+ * Renders a filesystem error for the log.
+ *
+ * The `code` is the useful part — `EROFS` (read-only filesystem) and `EACCES`
+ * say "this host cannot store files", while `ENOSPC` says "the disk is full" —
+ * and neither is a secret. The path is not logged, since `UPLOAD_DIR` is
+ * deployment detail rather than something an operator needs from this line.
+ */
+function describeFsError(error: Error): string {
+  const code = (error as NodeJS.ErrnoException).code;
+  return `${code ?? "unknown"}: ${error.message}`;
+}
+
+/** Why an upload was refused. Every case maps to one safe visitor message. */export type UploadRejection = {
   ok: false;
   /** Safe to show a visitor. Never includes a path, a byte offset, or a stack. */
   message: string;
+  /**
+   * True when the files were acceptable but the storage backend refused them —
+   * a read-only filesystem, a full disk, a permissions failure. Distinct from a
+   * rejected file, because the caller should keep the enquiry rather than throw
+   * it away, and should tell the visitor to resend the attachment.
+   */
+  storageUnavailable?: boolean;
 };
 
 export type UploadOutcome =
@@ -169,34 +188,63 @@ export async function storeAttachments(files: readonly File[]): Promise<UploadOu
   // an entire day's attachments can be removed by deleting one directory.
   const dayFolder = new Date().toISOString().slice(0, 10);
   const requestDir = path.join(uploadRoot, dayFolder);
-  await mkdir(requestDir, { recursive: true });
 
   const stored: StoredAttachment[] = [];
 
-  for (const file of accepted) {
-    // The only two things from the request that reach the path: a server-generated
-    // UUID and an extension derived from the file's own bytes.
-    const filename = `${randomUUID()}.${file.type.extension}`;
-    // `turbopackIgnore` for the same reason as `resolveUploadRoot`: the target
-    // is not statically known, and tracing would pull the whole project — and
-    // potentially the upload directory's own contents — into the deployment.
-    await writeFile(
-      path.join(/* turbopackIgnore: true */ requestDir, filename),
-      file.bytes,
-      // "wx" fails rather than overwriting. The UUID makes a collision
-      // implausible, but making it a hard error means it can never silently
-      // replace an existing attachment.
-      { flag: "wx" },
+  try {
+    await mkdir(requestDir, { recursive: true });
+
+    for (const file of accepted) {
+      // The only two things from the request that reach the path: a server-generated
+      // UUID and an extension derived from the file's own bytes.
+      const filename = `${randomUUID()}.${file.type.extension}`;
+      // `turbopackIgnore` for the same reason as `resolveUploadRoot`: the target
+      // is not statically known, and tracing would pull the whole project — and
+      // potentially the upload directory's own contents — into the deployment.
+      await writeFile(
+        path.join(/* turbopackIgnore: true */ requestDir, filename),
+        file.bytes,
+        // "wx" fails rather than overwriting. The UUID makes a collision
+        // implausible, but making it a hard error means it can never silently
+        // replace an existing attachment.
+        { flag: "wx" },
+      );
+
+      stored.push({
+        // Always a POSIX separator: the value is stored in the database and
+        // compared on read, and a Windows backslash would not match.
+        storageKey: path.posix.join(dayFolder, filename),
+        originalName: sanitiseDisplayName(file.name),
+        mimeType: file.type.mime,
+        sizeBytes: file.bytes.byteLength,
+      });
+    }
+  } catch (error) {
+    // A storage backend that cannot be written to is an infrastructure
+    // failure, not a problem with the visitor's file. On Vercel this is the
+    // expected path: only /tmp is writable, so `UPLOAD_DIR` under the
+    // project root fails with EROFS. It has to be caught here, because an
+    // uncaught throw out of a Server Action reaches the visitor as a 500 and
+    // loses a real enquiry over a supplementary attachment.
+    //
+    // Any file already written is removed, so a half-written set is never
+    // referenced by a row that gets created without it.
+    await Promise.all(stored.map((file) => deleteStoredFile(file.storageKey)));
+
+    console.error(
+      "[upload] Could not write to the upload directory:",
+      error instanceof Error ? describeFsError(error) : "unknown error",
     );
 
-    stored.push({
-      // Always a POSIX separator: the value is stored in the database and
-      // compared on read, and a Windows backslash would not match.
-      storageKey: path.posix.join(dayFolder, filename),
-      originalName: sanitiseDisplayName(file.name),
-      mimeType: file.type.mime,
-      sizeBytes: file.bytes.byteLength,
-    });
+    return {
+      ok: false,
+      // Distinguishes "we cannot store files at all right now" from "your file
+      // is not acceptable". The action keeps the enquiry either way, but tells
+      // the visitor to resend the attachment.
+      storageUnavailable: true,
+      message:
+        "We could not save the file you attached. Your request has still been recorded — please send the attachment again when we reply.",
+    };
   }
 
   return { ok: true, files: stored };

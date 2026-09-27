@@ -203,3 +203,76 @@ describe("minutesUntilReset", () => {
     expect(minutesUntilReset(Date.now() - 60_000)).toBe(1);
   });
 });
+
+describe("degradation warning", () => {
+  /**
+   * The fallback is silent by design in the sense that it never throws and never
+   * blocks a submission — but a limit that is weaker than the configured one has
+   * to be visible to whoever is responsible for it, or nobody finds out. These
+   * tests pin the two things that make the warning useful: it fires, and it fires
+   * once rather than on every submission.
+   */
+  it("warns when Redis is not configured at all", async () => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await rateLimit("contact", "9.9.9.9");
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toMatch(/UPSTASH_REDIS_REST_URL/);
+  });
+
+  it("says the limit is weaker, and why serverless makes that true", async () => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await rateLimit("contact", "9.9.9.9");
+
+    expect(warn.mock.calls[0]?.[0]).toMatch(/serverless/i);
+  });
+
+  it("warns only once per process, not once per submission", async () => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    for (let i = 0; i < 5; i += 1) {
+      await rateLimit("contact", `9.9.9.${i}`);
+    }
+
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("distinguishes an unconfigured limiter from an unreachable one", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token";
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED")) as unknown as typeof fetch;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await rateLimit("contact", "9.9.9.9");
+
+    expect(warn.mock.calls[0]?.[0]).toMatch(/unreachable/i);
+
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  });
+
+  it("stays quiet when Redis answers, so a healthy deployment is not noisy", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token";
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ result: 1 }, { result: 60 }],
+    }) as unknown as typeof fetch;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await rateLimit("contact", "9.9.9.9");
+
+    expect(warn).not.toHaveBeenCalled();
+
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  });
+});

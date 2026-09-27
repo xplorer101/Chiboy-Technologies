@@ -657,14 +657,23 @@ These are the items that must be resolved first — see
    strings were used by this project.
 2. **`NEXT_PUBLIC_SITE_URL` must be the real domain**, or canonical URLs, Open
    Graph tags and the sitemap will all point at the wrong origin.
-3. **File storage.** Uploads are currently written to `private-uploads/` on the
-   local filesystem, which is **ephemeral on Vercel** — uploaded files are lost
-   when an instance recycles. The storage driver in `src/lib/upload/` is an
+3. **File storage.** Uploads are currently written to `UPLOAD_DIR` (default
+   `private-uploads/`) on the local filesystem. On Vercel only `/tmp` is writable,
+   so this path fails with `EROFS`. That failure is handled rather than fatal: the
+   **enquiry is still recorded**, the lost attachment is written to the request's
+   `internalNotes`, and the visitor is told to resend the file. Nobody's enquiry
+   is lost to a supplementary attachment — but the attachment is genuinely gone,
+   so the owner has to chase it. The storage driver in `src/lib/upload/` is an
    interface specifically so that S3 or Vercel Blob can be dropped in. **Do not go
-   live on a plan that relies on the local disk for uploads.**
+   live on a plan that relies on the local disk for uploads.** The same applies to
+   any self-hosted Node process with a read-only or ephemeral filesystem.
 4. **Production rate limiting.** Set `UPSTASH_REDIS_REST_URL` and
-   `UPSTASH_REDIS_REST_TOKEN`, or the forms will use the in-memory fallback,
-   which does not work across serverless instances.
+   `UPSTASH_REDIS_REST_TOKEN`. Without them the limiter falls back to a per-process
+   counter, which is genuinely enforced on a single long-running Node process but
+   **much weaker on a serverless host**, where each instance keeps its own map and
+   a visitor is counted once per instance they land on. It logs a one-line warning
+   when it does this, so check the deployment logs after the first deploy —
+   a limit that is weaker than configured should not be a silent state.
 5. **Notification delivery.** The email channel is live but currently delivers
    to the Resend account inbox, not the business inbox — verify a domain and set
    `RESEND_FROM_DOMAIN` to fix that. The WhatsApp channel is unconfigured and

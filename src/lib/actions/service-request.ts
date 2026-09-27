@@ -140,11 +140,22 @@ export async function submitServiceRequest(
   const files = collectFiles(formData);
   const uploaded = await storeAttachments(files);
 
-  if (!uploaded.ok) {
+  // A file the visitor should not have sent is a reason to reject: nothing has
+  // been written, and sending it again unchanged would fail the same way.
+  //
+  // A storage backend that cannot be written to is not. The file was
+  // acceptable and the enquiry is the thing that matters, so the request is
+  // still recorded below and only the attachment is lost. The alternative —
+  // failing the whole submission — loses a real customer over a supplementary
+  // file, and is the path every Vercel deployment takes for any attachment.
+  if (!uploaded.ok && !uploaded.storageUnavailable) {
     // Nothing was written to disk: `storeAttachments` validates every file before
     // writing any of them.
     return { status: "error", message: uploaded.message };
   }
+
+  const attachmentProblem = !uploaded.ok ? uploaded.message : null;
+  const storedFiles = uploaded.ok ? uploaded.files : [];
 
   const reference = generateReference();
 
@@ -161,17 +172,22 @@ export async function submitServiceRequest(
         contactPref: values.contactPref,
         description: values.description,
         status: RequestStatus.NEW,
+        // The one thing a human reading this record needs to know that the
+        // columns cannot show: a file was offered and is not on disk.
+        ...(attachmentProblem
+          ? { internalNotes: `Attachment not stored: ${attachmentProblem}` }
+          : {}),
         // Nested create, so the request and its attachments are one transaction.
         // A partial attachment set is not a state the database can be in.
-        ...(uploaded.files.length > 0
-          ? { attachments: { create: toAttachmentRows(uploaded.files) } }
+        ...(storedFiles.length > 0
+          ? { attachments: { create: toAttachmentRows(storedFiles) } }
           : {}),
       },
     });
   } catch (error) {
     // Roll the files back. The database write is the thing that failed, so the
     // files it would have referenced have no reason to exist.
-    await Promise.all(uploaded.files.map((file) => deleteStoredFile(file.storageKey)));
+    await Promise.all(storedFiles.map((file) => deleteStoredFile(file.storageKey)));
 
     console.error(
       "[service-request] Submission failed:",
@@ -204,7 +220,7 @@ export async function submitServiceRequest(
     location: values.location,
     contactPreference: values.contactPref,
     description: values.description,
-    attachmentCount: uploaded.files.length,
+    attachmentCount: storedFiles.length,
   }).catch((error: unknown) => {
     console.error(
       `[service-request] Notification for ${reference} failed unexpectedly:`,
@@ -212,7 +228,14 @@ export async function submitServiceRequest(
     );
   });
 
-  return { status: "success", message: SUCCESS_MESSAGE, data: { reference } };
+  return {
+    status: "success",
+    // The stored request is reported as stored in both cases. When a file was
+    // lost, the visitor is told plainly rather than shown a bare success they
+    // would read as "everything you sent arrived".
+    message: attachmentProblem ? `${SUCCESS_MESSAGE} ${attachmentProblem}` : SUCCESS_MESSAGE,
+    data: { reference },
+  };
 }
 
 /** Maps the storage result onto the attachment table's columns. */

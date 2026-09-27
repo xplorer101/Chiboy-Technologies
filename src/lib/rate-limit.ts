@@ -74,7 +74,38 @@ const MAX_KEYS = 10_000;
 /** Redis calls are given a hard deadline; a hung request must not hang the form. */
 const REDIS_TIMEOUT_MS = 1_500;
 
-function checkMemory(key: string, limit: number, windowSeconds: number): RateLimitResult {
+/**
+ * Warns once per process when counting falls back to memory.
+ *
+ * The fallback is the right behaviour — a rate limiter that throws when Redis is
+ * unreachable takes the contact form down with it — but it is much weaker than it
+ * looks, and nothing else would ever say so. On a single long-running Node process
+ * the counters are shared and the limit is genuinely enforced. On a serverless
+ * host each instance has its own map, so a visitor is counted once per instance
+ * they happen to land on, and the effective limit is a small multiple of the
+ * configured one. An operator seeing this line knows the number in the config is
+ * not the number being enforced.
+ */
+let hasWarnedAboutMemoryFallback = false;
+
+function warnAboutMemoryFallback(reason: "unconfigured" | "unreachable"): void {
+  if (hasWarnedAboutMemoryFallback) return;
+  hasWarnedAboutMemoryFallback = true;
+
+  console.warn(
+    reason === "unconfigured"
+      ? "[rate-limit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are not set, so requests are counted per process. Set them in production: a serverless host runs many instances, and the per-process limit is weaker than the configured one."
+      : "[rate-limit] Redis is unreachable, so requests are counted per process for now. This does not fail the form, but the limit is weaker than configured until Redis responds.",
+  );
+}
+
+function checkMemory(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+  reason: "unconfigured" | "unreachable",
+): RateLimitResult {
+  warnAboutMemoryFallback(reason);
   const now = Date.now();
 
   if (memoryCounters.size > MAX_KEYS) {
@@ -177,13 +208,13 @@ export async function rateLimit(
   // environment would mean a missing `DATABASE_URL` took the rate limiter down
   // with it, so two unrelated misconfigurations failed the form together.
   const redis = getRateLimitConfig();
-  if (!redis) return checkMemory(key, limit, windowSeconds);
+  if (!redis) return checkMemory(key, limit, windowSeconds, "unconfigured");
 
   const result = await checkRedis(redis.url, redis.token, key, limit, windowSeconds);
 
   // Redis unreachable. Fall back to the local counter rather than to fully open:
   // per-instance counting still blunts a script, and costs one lookup.
-  return result ?? checkMemory(key, limit, windowSeconds);
+  return result ?? checkMemory(key, limit, windowSeconds, "unreachable");
 }
 
 /**
@@ -203,4 +234,8 @@ export function minutesUntilReset(resetAt: number): number {
  */
 export function __resetMemoryCounters(): void {
   memoryCounters.clear();
+  // The one-shot warning is part of the same module state. A test that resets
+  // the counters and then expects the warning again would otherwise be at the
+  // mercy of whichever test file happened to run first.
+  hasWarnedAboutMemoryFallback = false;
 }
