@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for IT Consultancy Review">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for Business Identity and Brand Basics">
   <defs>
-    <linearGradient id="bg-1atctbe" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="bg-11t4wxu" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0f1926" />
       <stop offset="100%" stop-color="#0a1018" />
     </linearGradient>
   </defs>
 
-  <rect width="1200" height="750" fill="url(#bg-1atctbe)" />
+  <rect width="1200" height="750" fill="url(#bg-11t4wxu)" />
   <g>
     <line x1="133.33333333333334" y1="0" x2="133.33333333333334" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
     <line x1="266.6666666666667" y1="0" x2="266.6666666666667" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
@@ -24,19 +24,20 @@
   </g>
 
   <g>
-    <line x1="778.3" y1="181.4" x2="735.7" y2="403.7" stroke="#c9a227" stroke-width="2" opacity="0.85" />
-    <line x1="440.2" y1="389.7" x2="493.1" y2="614.5" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
-    <line x1="163.6" y1="173.7" x2="424.1" y2="113.7" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
-    <line x1="424.1" y1="113.7" x2="440.2" y2="389.7" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="426.5" y1="159.1" x2="405.3" y2="324.6" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="176.5" y1="378.5" x2="405.3" y2="324.6" stroke="#c9a227" stroke-width="2" opacity="0.85" />
+    <line x1="999.7" y1="116.9" x2="1112.4" y2="328.7" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="182.8" y1="80.0" x2="426.5" y2="159.1" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
   </g>
   <g>
-    <circle cx="163.6" cy="173.7" r="4.5" fill="#2a4a6b" />
-    <circle cx="424.1" cy="113.7" r="4.5" fill="#2a4a6b" />
-    <circle cx="778.3" cy="181.4" r="4.5" fill="#2a4a6b" />
-    <circle cx="1088.4" cy="159.1" r="4.5" fill="#2a4a6b" />
-    <circle cx="440.2" cy="389.7" r="4.5" fill="#2a4a6b" />
-    <circle cx="735.7" cy="403.7" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="735.7" cy="403.7" r="8" fill="#d9b64a" />
-    <circle cx="493.1" cy="614.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="182.8" cy="80.0" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="182.8" cy="80.0" r="8" fill="#d9b64a" />
+    <circle cx="426.5" cy="159.1" r="4.5" fill="#2a4a6b" />
+    <circle cx="715.9" cy="95.8" r="4.5" fill="#2a4a6b" />
+    <circle cx="999.7" cy="116.9" r="4.5" fill="#2a4a6b" />
+    <circle cx="176.5" cy="378.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="405.3" cy="324.6" r="4.5" fill="#2a4a6b" />
+    <circle cx="786.8" cy="417.6" r="4.5" fill="#2a4a6b" />
+    <circle cx="1112.4" cy="328.7" r="4.5" fill="#2a4a6b" />
   </g>
 
   <!-- Explicit placeholder marker. This is sample content, not real work. -->

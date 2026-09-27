@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for Laptop Selected for Mobile Work">
+  <defs>
+    <linearGradient id="bg-6mue0r" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1926" />
+      <stop offset="100%" stop-color="#0a1018" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="750" fill="url(#bg-6mue0r)" />
+  <g>
+    <line x1="133.33333333333334" y1="0" x2="133.33333333333334" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="266.6666666666667" y1="0" x2="266.6666666666667" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="400" y1="0" x2="400" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="533.3333333333334" y1="0" x2="533.3333333333334" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="666.6666666666666" y1="0" x2="666.6666666666666" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="800" y1="0" x2="800" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="933.3333333333334" y1="0" x2="933.3333333333334" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="1066.6666666666667" y1="0" x2="1066.6666666666667" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="0" y1="125" x2="1200" y2="125" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="0" y1="250" x2="1200" y2="250" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="0" y1="375" x2="1200" y2="375" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="0" y1="500" x2="1200" y2="500" stroke="#16263a" stroke-width="1" opacity="0.5" />
+    <line x1="0" y1="625" x2="1200" y2="625" stroke="#16263a" stroke-width="1" opacity="0.5" />
+  </g>
+
+  <g>
+    <line x1="199.8" y1="340.5" x2="404.0" y2="324.2" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="457.4" y1="107.5" x2="404.0" y2="324.2" stroke="#c9a227" stroke-width="2" opacity="0.85" />
+    <line x1="716.6" y1="180.4" x2="795.9" y2="398.9" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="149.0" y1="109.5" x2="199.8" y2="340.5" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+  </g>
+  <g>
+    <circle cx="149.0" cy="109.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="457.4" cy="107.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="716.6" cy="180.4" r="4.5" fill="#2a4a6b" />
+    <circle cx="1022.3" cy="168.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="199.8" cy="340.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="404.0" cy="324.2" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="404.0" cy="324.2" r="8" fill="#d9b64a" />
+    <circle cx="795.9" cy="398.9" r="4.5" fill="#2a4a6b" />
+  </g>
+
+  <!-- Explicit placeholder marker. This is sample content, not real work. -->
+  <g>
+    <rect x="56" y="642" width="286" height="52" rx="8" fill="#0f1926" stroke="#c9a227" stroke-width="1.25" stroke-dasharray="6 5" />
+    <text x="76" y="676" font-family="ui-sans-serif, system-ui, sans-serif" font-size="19" font-weight="700" letter-spacing="2.6" fill="#d9b64a">PLACEHOLDER</text>
+  </g>
+</svg>

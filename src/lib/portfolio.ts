@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { ProjectVisibility } from "@/generated/prisma/enums";
+import { PortfolioCategory, ProjectVisibility } from "@/generated/prisma/enums";
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
 
 /**
@@ -36,28 +36,54 @@ export type PortfolioDetail = PortfolioCard & {
 };
 
 /**
- * Returns the most recent published projects, newest first.
- * Never throws: an unreachable or unmigrated database yields an empty list so
- * the page can show a designed empty state.
+ * A read that also reports WHY it came back empty.
+ *
+ * "No projects published yet" and "the database is unreachable" both produce
+ * zero rows, and a visitor shown the same message for both is being told
+ * something untrue in one of the two cases — that the portfolio is empty
+ * rather than temporarily unavailable. The dedicated `/portfolio` page uses
+ * this so it can say which it is; the homepage and service pages keep using
+ * `getPublishedProjects`, where a section is a decoration and the distinction
+ * does not matter.
  */
-export async function getPublishedProjects(limit?: number): Promise<PortfolioCard[]> {
+export type PortfolioFeed = {
+  projects: PortfolioCard[];
+  /** True when the read failed because the database was unavailable. */
+  unavailable: boolean;
+};
+
+/** Columns needed for a project card. Selected explicitly so new schema fields
+ *  are never exposed to a public page by accident. */
+const CARD_SELECT = {
+  slug: true,
+  title: true,
+  summary: true,
+  category: true,
+  coverImage: true,
+  isPlaceholder: true,
+  serviceSlug: true,
+} as const;
+
+const PUBLISHED_ORDER = [
+  { sortOrder: "asc" },
+  { createdAt: "desc" },
+] as const;
+
+/**
+ * The full published portfolio, with an availability flag.
+ * Never throws: an unreachable or unmigrated database yields an empty list and
+ * `unavailable: true` rather than a 500 page.
+ */
+export async function getPortfolioFeed(limit?: number): Promise<PortfolioFeed> {
   try {
     const projects = await prisma.portfolioProject.findMany({
       where: { visibility: ProjectVisibility.PUBLISHED },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      orderBy: [...PUBLISHED_ORDER],
       take: limit,
-      select: {
-        slug: true,
-        title: true,
-        summary: true,
-        category: true,
-        coverImage: true,
-        isPlaceholder: true,
-        serviceSlug: true,
-      },
+      select: CARD_SELECT,
     });
 
-    return projects;
+    return { projects, unavailable: false };
   } catch (error) {
     if (isDatabaseUnavailableError(error)) {
       // Logged server-side only. The exact reason is never shown to a visitor.
@@ -65,10 +91,20 @@ export async function getPublishedProjects(limit?: number): Promise<PortfolioCar
         "[portfolio] Falling back to an empty list:",
         error instanceof Error ? error.message : error,
       );
-      return [];
+      return { projects: [], unavailable: true };
     }
     throw error;
   }
+}
+
+/**
+ * Returns the most recent published projects, newest first.
+ * Never throws: an unreachable or unmigrated database yields an empty list so
+ * the page can show a designed empty state.
+ */
+export async function getPublishedProjects(limit?: number): Promise<PortfolioCard[]> {
+  const { projects } = await getPortfolioFeed(limit);
+  return projects;
 }
 
 export async function getPublishedProject(slug: string): Promise<PortfolioDetail | null> {
@@ -76,13 +112,7 @@ export async function getPublishedProject(slug: string): Promise<PortfolioDetail
     return await prisma.portfolioProject.findFirst({
       where: { slug, visibility: ProjectVisibility.PUBLISHED },
       select: {
-        slug: true,
-        title: true,
-        summary: true,
-        category: true,
-        coverImage: true,
-        isPlaceholder: true,
-        serviceSlug: true,
+        ...CARD_SELECT,
         problem: true,
         solution: true,
         toolsUsed: true,
@@ -123,16 +153,57 @@ export async function getProjectsBySlugs(slugs: readonly string[]): Promise<Port
   try {
     return await prisma.portfolioProject.findMany({
       where: { slug: { in: [...slugs] }, visibility: ProjectVisibility.PUBLISHED },
-      select: {
-        slug: true,
-        title: true,
-        summary: true,
-        category: true,
-        coverImage: true,
-        isPlaceholder: true,
-        serviceSlug: true,
-      },
+      select: CARD_SELECT,
     });
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) return [];
+    throw error;
+  }
+}
+
+/**
+ * Other projects in the same category, for the "more like this" block at the
+ * bottom of a project page.
+ *
+ * The current project is excluded in the query rather than filtered out
+ * afterwards, so `limit` is the number of cards the visitor actually sees. It
+ * falls back to other categories when the whole category is the current
+ * project, which keeps the section populated for a category that only has one
+ * entry.
+ */
+export async function getRelatedProjects(
+  current: { slug: string; category: string },
+  limit = 3,
+): Promise<PortfolioCard[]> {
+  if (limit <= 0) return [];
+
+  try {
+    const sameCategory = await prisma.portfolioProject.findMany({
+      where: {
+        slug: { not: current.slug },
+        category: current.category as PortfolioCategory,
+        visibility: ProjectVisibility.PUBLISHED,
+      },
+      orderBy: [...PUBLISHED_ORDER],
+      take: limit,
+      select: CARD_SELECT,
+    });
+
+    if (sameCategory.length >= limit) return sameCategory;
+
+    // Top up with anything else published, avoiding slugs already chosen.
+    const alreadyPicked = new Set([current.slug, ...sameCategory.map((p) => p.slug)]);
+    const filler = await prisma.portfolioProject.findMany({
+      where: {
+        slug: { notIn: [...alreadyPicked] },
+        visibility: ProjectVisibility.PUBLISHED,
+      },
+      orderBy: [...PUBLISHED_ORDER],
+      take: limit - sameCategory.length,
+      select: CARD_SELECT,
+    });
+
+    return [...sameCategory, ...filler];
   } catch (error) {
     if (isDatabaseUnavailableError(error)) return [];
     throw error;

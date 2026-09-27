@@ -100,7 +100,11 @@ const rawServices = [
       "Removal of conflicting, duplicated or malicious software",
       "Health check with a written summary of findings and recommendations",
     ],
-    relatedProjectSlugs: ["placeholder-software-maintenance"],
+    relatedProjectSlugs: [
+      "placeholder-software-maintenance-slow-workstation",
+      "placeholder-software-maintenance-update-failures",
+      "placeholder-software-maintenance-app-reconfiguration",
+    ],
     faqs: [
       {
         question: "How do you diagnose a software problem?",
@@ -161,7 +165,11 @@ const rawServices = [
       "Email, network and printer setup where required",
       "Testing to confirm everything launches and works as expected",
     ],
-    relatedProjectSlugs: ["placeholder-software-installation"],
+    relatedProjectSlugs: [
+      "placeholder-software-installation-new-machine",
+      "placeholder-software-installation-device-drivers",
+      "placeholder-software-installation-business-software",
+    ],
     faqs: [
       {
         question: "Do you supply the software licence?",
@@ -222,7 +230,11 @@ const rawServices = [
       "Network performance and connectivity troubleshooting",
       "Documentation of the setup, including passwords and addresses",
     ],
-    relatedProjectSlugs: ["placeholder-networking"],
+    relatedProjectSlugs: [
+      "placeholder-networking-office-coverage",
+      "placeholder-networking-shared-resources",
+      "placeholder-networking-guest-network",
+    ],
     faqs: [
       {
         question: "Do I need new equipment to improve my Wi-Fi?",
@@ -283,7 +295,11 @@ const rawServices = [
       "Source files and exported images supplied in the formats you need",
       "Reasonable revisions until the design is right",
     ],
-    relatedProjectSlugs: ["placeholder-graphics-design"],
+    relatedProjectSlugs: [
+      "placeholder-graphics-design-identity-basics",
+      "placeholder-graphics-design-campaign-artwork",
+      "placeholder-graphics-design-social-templates",
+    ],
     faqs: [
       {
         question: "What do I receive at the end of a design project?",
@@ -344,7 +360,11 @@ const rawServices = [
       "Delivery, setup and configuration so the product is usable from the start",
       "After-sales support and help with any issues that follow the purchase",
     ],
-    relatedProjectSlugs: ["placeholder-technology-sales"],
+    relatedProjectSlugs: [
+      "placeholder-sales-office-workstations",
+      "placeholder-sales-mobile-laptop",
+      "placeholder-sales-software-licensing",
+    ],
     faqs: [
       {
         question: "How do I know which computer I need?",
@@ -405,7 +425,11 @@ const rawServices = [
       "Coordination of implementation, whether delivered by us or a third party",
       "A follow-up review to confirm the advice was implemented correctly",
     ],
-    relatedProjectSlugs: ["placeholder-it-consultancy"],
+    relatedProjectSlugs: [
+      "placeholder-consultancy-pre-purchase-review",
+      "placeholder-consultancy-setup-review",
+      "placeholder-consultancy-growth-planning",
+    ],
     faqs: [
       {
         question: "Are you independent of suppliers?",

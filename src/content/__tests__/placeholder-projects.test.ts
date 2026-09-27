@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { placeholderProjects } from "@/content/placeholder-projects";
 import { services } from "@/content/services";
+import { PORTFOLIO_CATEGORIES } from "@/lib/portfolio-categories";
 
 /**
  * Guards the three-way reference between the placeholder portfolio entries, the
@@ -21,8 +22,31 @@ import { services } from "@/content/services";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 describe("placeholderProjects", () => {
-  it("provides one entry per service", () => {
-    expect(placeholderProjects).toHaveLength(services.length);
+  it("gives every service enough work to fill its related-work section", () => {
+    // At least one per service, not exactly one. A service page shows a
+    // "related work" rail, and a single entry would render a one-card row that
+    // looks like missing content rather than like a design.
+    const perService = new Map<string, number>();
+    for (const project of placeholderProjects) {
+      perService.set(project.serviceSlug, (perService.get(project.serviceSlug) ?? 0) + 1);
+    }
+
+    for (const service of services) {
+      expect(perService.get(service.slug) ?? 0, `no placeholder project for ${service.slug}`)
+        .toBeGreaterThanOrEqual(3);
+    }
+    expect(placeholderProjects.length).toBeGreaterThanOrEqual(services.length * 3);
+  });
+
+  it("covers every portfolio category, so no filter view is ever empty", () => {
+    // The category filter links to each category directly. A category with no
+    // projects produces a dead-end page that says the portfolio is empty, which
+    // reads as a bug in the site rather than as an absence of content.
+    const categories = new Set(placeholderProjects.map((project) => project.category));
+
+    for (const category of PORTFOLIO_CATEGORIES) {
+      expect(categories.has(category), `no placeholder project in ${category}`).toBe(true);
+    }
   });
 
   it("uses unique, URL-safe slugs", () => {

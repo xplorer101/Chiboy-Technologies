@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for Technology Supply Project">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for Printer and Scanner Set Up">
   <defs>
-    <linearGradient id="bg-xvziwy" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="bg-o3bfua" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0f1926" />
       <stop offset="100%" stop-color="#0a1018" />
     </linearGradient>
   </defs>
 
-  <rect width="1200" height="750" fill="url(#bg-xvziwy)" />
+  <rect width="1200" height="750" fill="url(#bg-o3bfua)" />
   <g>
     <line x1="133.33333333333334" y1="0" x2="133.33333333333334" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
     <line x1="266.6666666666667" y1="0" x2="266.6666666666667" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
@@ -24,21 +24,19 @@
   </g>
 
   <g>
-    <line x1="509.8" y1="131.6" x2="460.2" y2="159.2" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
-    <line x1="460.2" y1="159.2" x2="538.4" y2="363.5" stroke="#c9a227" stroke-width="2" opacity="0.85" />
-    <line x1="759.7" y1="346.3" x2="538.4" y2="363.5" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
-    <line x1="509.8" y1="131.6" x2="538.4" y2="363.5" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="197.8" y1="165.5" x2="131.0" y2="366.4" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="197.8" y1="165.5" x2="461.1" y2="101.7" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="461.1" y1="101.7" x2="734.6" y2="78.9" stroke="#c9a227" stroke-width="2" opacity="0.85" />
+    <line x1="131.0" y1="366.4" x2="125.0" y2="655.6" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
   </g>
   <g>
-    <circle cx="91.6" cy="87.4" r="4.5" fill="#2a4a6b" />
-    <circle cx="509.8" cy="131.6" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="509.8" cy="131.6" r="8" fill="#d9b64a" />
-    <circle cx="1006.5" cy="92.0" r="4.5" fill="#2a4a6b" />
-    <circle cx="759.7" cy="346.3" r="4.5" fill="#2a4a6b" />
-    <circle cx="1105.2" cy="360.7" r="4.5" fill="#2a4a6b" />
-    <circle cx="178.4" cy="647.2" r="4.5" fill="#2a4a6b" />
-    <circle cx="501.1" cy="627.6" r="4.5" fill="#2a4a6b" />
-    <circle cx="460.2" cy="159.2" r="4.5" fill="#2a4a6b" />
-    <circle cx="538.4" cy="363.5" r="4.5" fill="#2a4a6b" />
+    <circle cx="197.8" cy="165.5" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="197.8" cy="165.5" r="8" fill="#d9b64a" />
+    <circle cx="461.1" cy="101.7" r="4.5" fill="#2a4a6b" />
+    <circle cx="734.6" cy="78.9" r="4.5" fill="#2a4a6b" />
+    <circle cx="1107.5" cy="148.6" r="4.5" fill="#2a4a6b" />
+    <circle cx="131.0" cy="366.4" r="4.5" fill="#2a4a6b" />
+    <circle cx="708.8" cy="409.4" r="4.5" fill="#2a4a6b" />
+    <circle cx="125.0" cy="655.6" r="4.5" fill="#2a4a6b" />
   </g>
 
   <!-- Explicit placeholder marker. This is sample content, not real work. -->

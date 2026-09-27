@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for Software Installation Project">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="Placeholder cover art for Pre-Purchase Technology Review">
   <defs>
-    <linearGradient id="bg-q06bi7" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="bg-9ico4j" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0f1926" />
       <stop offset="100%" stop-color="#0a1018" />
     </linearGradient>
   </defs>
 
-  <rect width="1200" height="750" fill="url(#bg-q06bi7)" />
+  <rect width="1200" height="750" fill="url(#bg-9ico4j)" />
   <g>
     <line x1="133.33333333333334" y1="0" x2="133.33333333333334" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
     <line x1="266.6666666666667" y1="0" x2="266.6666666666667" y2="750" stroke="#16263a" stroke-width="1" opacity="0.5" />
@@ -24,20 +24,21 @@
   </g>
 
   <g>
-    <line x1="503.3" y1="165.8" x2="421.7" y2="370.9" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
-    <line x1="1011.9" y1="128.3" x2="1111.6" y2="340.9" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
-    <line x1="421.7" y1="370.9" x2="396.1" y2="608.7" stroke="#c9a227" stroke-width="2" opacity="0.85" />
-    <line x1="153.0" y1="402.3" x2="138.2" y2="648.1" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="713.3" y1="122.8" x2="733.4" y2="352.1" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="156.2" y1="415.0" x2="199.5" y2="664.3" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
+    <line x1="456.9" y1="80.8" x2="713.3" y2="122.8" stroke="#c9a227" stroke-width="2" opacity="0.85" />
+    <line x1="128.3" y1="146.3" x2="156.2" y2="415.0" stroke="#2a4a6b" stroke-width="1.25" opacity="0.4" />
   </g>
   <g>
-    <circle cx="503.3" cy="165.8" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="503.3" cy="165.8" r="8" fill="#d9b64a" />
-    <circle cx="1011.9" cy="128.3" r="4.5" fill="#2a4a6b" />
-    <circle cx="153.0" cy="402.3" r="4.5" fill="#2a4a6b" />
-    <circle cx="421.7" cy="370.9" r="4.5" fill="#2a4a6b" />
-    <circle cx="719.1" cy="337.3" r="4.5" fill="#2a4a6b" />
-    <circle cx="1111.6" cy="340.9" r="4.5" fill="#2a4a6b" />
-    <circle cx="138.2" cy="648.1" r="4.5" fill="#2a4a6b" />
-    <circle cx="396.1" cy="608.7" r="4.5" fill="#2a4a6b" />
+    <circle cx="128.3" cy="146.3" r="4.5" fill="#2a4a6b" />
+    <circle cx="456.9" cy="80.8" r="4.5" fill="#2a4a6b" />
+    <circle cx="713.3" cy="122.8" r="4.5" fill="#2a4a6b" />
+    <circle cx="156.2" cy="415.0" r="4.5" fill="#2a4a6b" />
+    <circle cx="733.4" cy="352.1" r="4.5" fill="#2a4a6b" />
+    <circle cx="1036.7" cy="338.7" r="15" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.35" /><circle cx="1036.7" cy="338.7" r="8" fill="#d9b64a" />
+    <circle cx="199.5" cy="664.3" r="4.5" fill="#2a4a6b" />
+    <circle cx="501.1" cy="569.1" r="4.5" fill="#2a4a6b" />
+    <circle cx="764.9" cy="633.1" r="4.5" fill="#2a4a6b" />
   </g>
 
   <!-- Explicit placeholder marker. This is sample content, not real work. -->

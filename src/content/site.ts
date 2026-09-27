@@ -17,12 +17,37 @@ export const site = {
     "CHIBOY TECHNOLOGIES provides computer software maintenance, software installation and configuration, computer troubleshooting and support, networking, graphics design, technology sales and IT consultancy for individuals and businesses.",
 
   /**
-   * Filled in on request-service and the homepage, from the spec.
-   * `yearsInBusiness` is intentionally absent: no figure has been supplied and
-   * inventing one is not permitted. It belongs in this file once provided.
+   * Supplied by the business: 13 years in business.
+   *
+   * Recorded as a DURATION rather than a founding year, on purpose. A duration
+   * stays true as time passes; a year derived from it would quietly go stale on
+   * the site and could be a year out depending on whether the current year is
+   * counted inclusively. If a founding year is ever needed it should be stated
+   * in its own right.
+   *
+   * This is the ONLY quantitative claim about the business anywhere in the
+   * content layer. No other figure — customer count, response time, staff
+   * numbers, project volume, revenue — has been supplied, and inventing one is
+   * not permitted, so those are described qualitatively in `trustPoints`.
    */
-  founded: "[PLACEHOLDER: years in business]",
+  yearsInBusiness: 13,
 } as const;
+
+/**
+ * "13 years in business".
+ *
+ * Derived from `site.yearsInBusiness` so the figure is written down exactly
+ * once and every page states it identically. The singular form is handled for
+ * the case where the figure is ever corrected to 1.
+ */
+export function getExperienceStatement(): string {
+  // Widened to `number` on purpose. `site` is `as const`, so the literal type is
+  // `13` and the singular branch below would otherwise be a comparison between
+  // two disjoint types, which TypeScript rejects. The branch is kept because the
+  // figure is correctable content, not a constant.
+  const years: number = site.yearsInBusiness;
+  return `${years} ${years === 1 ? "year" : "years"} in business`;
+}
 
 export const hero = {
   headline: "Technology Solutions That Keep Your Business Moving.",
