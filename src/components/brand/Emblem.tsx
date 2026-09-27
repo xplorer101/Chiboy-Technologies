@@ -1,10 +1,4 @@
-import {
-  EMBLEM_GROUND,
-  EMBLEM_NAVY,
-  EMBLEM_PARAMS,
-  EMBLEM_SILVER,
-  emblemPaths,
-} from "@/brand/emblem";
+import { EMBLEM_STROKE_ATTRS, emblemMark } from "@/brand/emblem";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -16,17 +10,16 @@ import { cn } from "@/lib/utils/cn";
  * where a build can verify them. `scripts/generate-logo.ts` writes the same
  * geometry out to static SVG assets from the same module.
  *
- * Colours are fixed to the brand pair by default rather than inherited through
- * `currentColor`, because the two tones are only legible on a dark ground — see
- * the contrast note in `@/brand/emblem`.
+ * Colours are fixed to the brand tones rather than inherited through
+ * `currentColor`, because the mark is designed for its navy badge and the
+ * silver is legible on that ground and nowhere else — see the contrast note in
+ * `@/brand/emblem`.
+ *
+ * Paint order is load-bearing: the badge, then the C, then the T over it, then
+ * the gold chevron last, so the one gold element is never occluded.
  */
 
-/** The three filled paths, computed once at module load. */
-const PATHS = emblemPaths(EMBLEM_PARAMS);
-
-/** Corner radius of the dark badge the mark sits on, in viewBox units. */
-const BADGE_RADIUS = 18;
-
+/** Whether to draw the navy badge behind the mark. */
 export interface EmblemProps {
   /**
    * Accessible name. Omit when the mark is decorative and sits next to a
@@ -36,14 +29,16 @@ export interface EmblemProps {
    */
   title?: string;
   /**
-   * Draw the near-black badge behind the mark. On by default, because the
-   * specified navy and silver are only legible against a dark ground.
+   * Draw the navy badge behind the mark. On by default, because the silver
+   * measures 4.9:1 on that navy and only 2.3:1 on white.
    */
   badge?: boolean;
   className?: string;
 }
 
 export function Emblem({ title, badge = true, className }: EmblemProps) {
+  const mark = emblemMark();
+
   return (
     <svg
       viewBox="0 0 100 100"
@@ -52,12 +47,19 @@ export function Emblem({ title, badge = true, className }: EmblemProps) {
       aria-hidden={title ? undefined : "true"}
       aria-label={title}
     >
-      {badge ? (
-        <rect width="100" height="100" rx={BADGE_RADIUS} fill={EMBLEM_GROUND} />
-      ) : null}
-      <path d={PATHS.c} fill={EMBLEM_NAVY} />
-      <path d={PATHS.t} fill={EMBLEM_SILVER} />
-      <path d={PATHS.arrow} fill={EMBLEM_NAVY} />
+      {badge ? <path d={mark.badge.d} fill={mark.badge.fill} /> : null}
+      {mark.strokes.map((stroke) => (
+        <path
+          key={stroke.d}
+          d={stroke.d}
+          stroke={stroke.stroke}
+          strokeWidth={stroke.width}
+          {...EMBLEM_STROKE_ATTRS}
+        />
+      ))}
+      {mark.fills.map((fill) => (
+        <path key={fill.d} d={fill.d} fill={fill.fill} />
+      ))}
     </svg>
   );
 }

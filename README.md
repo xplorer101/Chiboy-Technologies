@@ -237,16 +237,30 @@ absent field is better than a wrong one, and far better than emitting a literal
 
 ### The emblem
 
-The mark is a **C** wrapping a **T** whose stem turns into a forward arrow, in
-the supplied two-tone palette: navy `#1B3A6B` and silver `#A8ACAF`. It is
-authored as **filled paths only** — no strokes, gradients, filters or shadows —
-so it renders identically in a browser, in print and in an email signature, and
-needs no image pipeline. Total weight is about 600 bytes.
+A chamfered **C** — a square with its four corners cut off at 45° — containing a
+solid upright **T**, with a gold chevron pointing out through the C's aperture.
+Three ideas, each doing one job:
 
-It is defined **once**, in `src/brand/emblem.ts`, as named parameters (radii,
-angles, stroke widths) rather than as hand-typed coordinates. Both the on-page
-component and the generated asset files read that module, so they cannot drift
-apart. To change the proportions, edit a parameter there and run:
+- **The C is a container, drawn as an outline.** It reads as machined metalwork
+  rather than as a ring, because every corner is a cut and nothing is round.
+  That is where the futuristic quality comes from — from geometry, not from
+  glow or gradient, both of which are banned by the brand constraints.
+- **The T is solid, not an outline.** Outline against outline at 32px turns two
+  sets of lines into grey mush. Giving the T mass while the C stays open is what
+  makes the letterform survive at favicon size.
+- **The chevron is the only forward-motion cue and the only gold in the mark.** It
+  sits in the C's aperture — the one part of the mark that would otherwise be
+  empty — and points out of it, so the eye leaves the logo the way it should.
+
+The badge is a **cut-corner square**, the same shape as the C at a larger size.
+That repetition is deliberate: it is what makes the badge and the C read as one
+object rather than as a shape inside a shape, and it gives the favicon a distinct
+app-icon silhouette.
+
+It is defined **once**, in `src/brand/emblem.ts`, as named parameters (half-widths,
+corner cuts, stroke weights) rather than as hand-typed coordinates. Both the
+on-page component and the generated asset files read that module, so they cannot
+drift apart. To change the proportions, edit a parameter there and run:
 
 ```bash
 npm run logo
@@ -257,7 +271,7 @@ which rewrites:
 | File | Use |
 |---|---|
 | `public/brand/emblem.svg` | The mark alone on a transparent ground, to place on a light surface |
-| `public/brand/emblem-dark.svg` | The mark on its near-black badge — the version to use on the website, in print or in an email signature |
+| `public/brand/emblem-dark.svg` | The mark on its navy badge — the version to use on the website, in print or in an email signature |
 | `public/brand/favicon.svg` | Square badge for browsers and app icons |
 | `src/app/icon.svg` | The App Router favicon, picked up by file convention |
 
@@ -269,24 +283,61 @@ misspelled, which is the most common failure mode of a generated wordmark. The
 outlined-letterform approach is worth revisiting only if a single-file
 all-in-one lockup is ever needed for print.
 
-### Why the mark always sits on a dark badge
+### The palette is the site's, not a new one
 
-The supplied palette is deliberately split in brightness, and the two tones are
-each strong against one background and weak against the other:
+This mark is the **third** version, and the first to introduce no invented colour
+at all. The two earlier drafts reached for a circuit-board cyan and a neon blue
+that were in no brand palette; both are gone. What remains is Deep Navy, Silver
+and Gold — the same three the rest of the site uses — so the logo cannot drift
+away from the page it sits on. A test asserts that no fourth tone creeps in,
+which is how the earlier drafts went wrong.
 
-| | On white | On the near-black badge |
-|---|---|---|
-| Navy `#1B3A6B` | **11.3:1** | 1.9:1 |
-| Silver `#A8ACAF` | 2.3:1 | **9.2:1** |
+| | On the navy badge |
+|---|---|
+| Silver `#A8ACAF` — the C and the T | **4.9:1** |
+| Gold `#E8B84B` — the chevron | **6.1:1** |
 
-Neither tone is legible on the other's ground, so the logo carries its own
-near-black badge rather than relying on whatever it happens to sit on. On that
-badge the silver T and arrow carry the mark at full strength and the navy ring
-reads as a deliberate tonal frame. Placing the mark straight onto the white
-header without its badge would drop the T to 2.3:1.
+The badge is navy rather than near-black, which is a change from the previous
+mark. Near-black was chosen to lift the silver; navy lifts it almost as well and
+is the brand's own primary, so the logo now reads as part of the identity rather
+than as a monochrome mark bolted onto it. On white the silver drops to 2.3:1,
+which is why the badge is on by default and why the transparent-ground asset
+exists for placing the mark on a chosen light surface.
 
-Those ratios are asserted in `src/brand/__tests__/emblem.test.ts`, so moving the
-badge away from a dark ground fails the tests with the reason attached.
+**The gold is deliberately the brightest of the three.** Gold-500 sits at almost
+exactly the same luminance as the silver, and two marks differing only by a hue
+cannot be told apart at 32px. Lifting the gold to a higher lightness than the
+silver gives the accent a luminance difference as well, so it still reads as a
+different material when the mark is small.
+
+### Why the mark is built from parameters, and what the tests guard
+
+`cutCornerSquare()` produces the badge and the C from the same two numbers, so
+the two cannot disagree about what a chamfer is. On top of that,
+`src/brand/__tests__/emblem.test.ts` pins the things that silently break a mark:
+
+- **The miter limit.** Every corner's interior angle is computed and checked
+  against the angle below which a renderer silently bevels instead of mitring.
+  A bevelled corner means the mark grows rounded edges in one browser and sharp
+  edges in another — the exact inconsistency the flat-vector rule exists to
+  prevent.
+- **Clearances.** Every gap in the composition — C to T, T to chevron, chevron to
+  the C's terminals — is asserted in units, measured on the real generated paths
+  rather than on the parameters, so it fails if the two shapes ever disagree.
+- **Nesting.** The T must sit inside the C and the chevron entirely to the right
+  of the T. If any of those invert, the mark stops reading as container /
+  payload / output and becomes three shapes at random.
+- **Paint order.** The chevron is painted last, so the one gold element is never
+  occluded by the T.
+- **Gold budget.** Exactly one element may carry the gold, so it can never become
+  gold-dominant.
+
+The mark is authored as vector rather than generated as a raster. That was a
+deliberate call: an image generator cannot be checked for a correct wordmark, and
+hand-authoring means every coordinate is reviewable in the diff. The trade-off is
+that the mark has not been seen by a designer at full size — the proportions were
+arrived at by rendering the SVG to a grid and reading it, which catches crowding
+and invisible detail but not taste.
 
 ### Two things to know
 
@@ -295,10 +346,10 @@ badge away from a dark ground fails the tests with the reason attached.
   of path data. Making `Header` a server component with a client-only drawer
   would remove it, and is the better structure, but it is a refactor of the
   header rather than of the logo.
-- **At 16×16 the navy ring falls below one pixel**, so the favicon effectively
-  reads as the silver T on black. That is legible and on-brand, and the tab also
-  shows the page title, so a separate simplified 16px variant was not judged
-  worth having a second asset to keep in sync.
+- **Every corner is cut, not round, on purpose.** There is no rounded-square
+  variant, so a designer asking for "the same logo but friendlier" will get a
+  different mark, not a softened one. That was a choice: the cuts are what make
+  it read as technical.
 
 ---
 
