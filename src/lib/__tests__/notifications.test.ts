@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   contactPreferenceLabel,
+  resendFromAddress,
+  RESEND_ONBOARDING_ADDRESS,
   serviceRequestEmailBody,
   serviceRequestEmailSubject,
   serviceRequestWhatsAppText,
@@ -38,6 +40,76 @@ const request: NewServiceRequest = {
   description: "The office has no wired network and Wi-Fi drops in the afternoon.",
   attachmentCount: 0,
 };
+
+describe("resendFromAddress", () => {
+  /**
+   * Regression tests for a bug found only by sending a real email.
+   *
+   * The previous code had `env.ts` return a *domain* and the sender prefix it
+   * with `notifications@`. But the fallback for an unconfigured domain was
+   * `onboarding@resend.dev`, which is already a complete address — so the
+   * header went out as `CHIBOY TECHNOLOGIES <notifications@onboarding@resend.dev>`
+   * and Resend rejected every send with "Invalid `from` field". The unit tests
+   * passed, because none of them involved a real API.
+   */
+  it("returns a complete address for a configured domain", () => {
+    expect(resendFromAddress("chiboytechnologies.com")).toBe(
+      "notifications@chiboytechnologies.com",
+    );
+  });
+
+  it("produces exactly one @ for a configured domain", () => {
+    // The precise shape of the original failure.
+    const address = resendFromAddress("chiboytechnologies.com");
+    expect(address.split("@")).toHaveLength(2);
+  });
+
+  it("uses Resend's onboarding address when no domain is configured", () => {
+    // Not `notifications@onboarding@resend.dev` — Resend requires this exact
+    // address for unverified sending and the local part cannot be changed.
+    expect(resendFromAddress(undefined)).toBe(RESEND_ONBOARDING_ADDRESS);
+    expect(resendFromAddress("")).toBe(RESEND_ONBOARDING_ADDRESS);
+    expect(resendFromAddress("   ")).toBe(RESEND_ONBOARDING_ADDRESS);
+    expect(RESEND_ONBOARDING_ADDRESS).toBe("onboarding@resend.dev");
+  });
+
+  it("degrades to the onboarding address rather than failing the send", () => {
+    // A malformed domain should still notify the business owner, just not from
+    // the address they asked for.
+    for (const bad of [
+      "not a domain",
+      "chiboytechnologies.com; subject=hi",
+      "user@evil.example.com",
+      // Header injection: a CRLF in the middle survives `trim()` but is not in
+      // the allowed character class, so it is rejected rather than prefixed.
+      "chiboytech.com\r\nBcc: attacker@example.com",
+      "-leading-hyphen.com",
+      "double..dot.com",
+      "<script>",
+    ]) {
+      expect(resendFromAddress(bad)).toBe(RESEND_ONBOARDING_ADDRESS);
+    }
+  });
+
+  it("accepts a subdomain and a hyphenated domain", () => {
+    expect(resendFromAddress("mail.chiboytechnologies.com")).toBe(
+      "notifications@mail.chiboytechnologies.com",
+    );
+    expect(resendFromAddress("my-tech.co")).toBe("notifications@my-tech.co");
+  });
+
+  it("trims surrounding whitespace rather than rejecting a padded value", () => {
+    // An env file routinely leaves a trailing newline on a value. Trimming it is
+    // the helpful behaviour, and it is safe: the remaining string is still
+    // matched against the full pattern, so an embedded CRLF is still rejected.
+    expect(resendFromAddress("  chiboytechnologies.com  ")).toBe(
+      "notifications@chiboytechnologies.com",
+    );
+    expect(resendFromAddress("chiboytechnologies.com\n")).toBe(
+      "notifications@chiboytechnologies.com",
+    );
+  });
+});
 
 describe("toSingleLine", () => {
   it("collapses newlines so a multi-line description cannot break the layout", () => {

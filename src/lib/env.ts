@@ -138,39 +138,29 @@ export function getRateLimitConfig(): { url: string; token: string } | null {
  * consequence of "the database is not configured".
  */
 export type NotificationConfig = {
-  email: { apiKey: string; ownerEmail: string; fromDomain: string } | null;
+  email: { apiKey: string; ownerEmail: string; fromDomain?: string } | null;
   whatsapp: { apiKey: string; phone: string } | null;
 };
-
-/**
- * Resend's onboarding domain.
- *
- * Delivers only to the account's own address, which is all this project needs,
- * and it is why the site can be fully configured without a verified domain.
- * Falling back to it means a missing `RESEND_FROM_DOMAIN` is not a failure.
- */
-const RESEND_ONBOARDING_DOMAIN = "onboarding@resend.dev";
 
 export function getNotificationConfig(): NotificationConfig {
   const ownerEmail = process.env.OWNER_EMAIL?.trim() ?? "";
   const resendKey = process.env.RESEND_API_KEY?.trim() ?? "";
   const botKey = process.env.CALLMEBOT_APIKEY?.trim() ?? "";
   const botPhone = normaliseWhatsAppNumber(process.env.CALLMEBOT_PHONE);
-  const fromDomain = process.env.RESEND_FROM_DOMAIN?.trim() ?? "";
 
   return {
     // Both halves are required. A key with no recipient would send mail to
     // Resend's own bounce address, and a recipient with no key cannot be sent to.
+    //
+    // `fromDomain` is passed through exactly as configured — raw, unvalidated,
+    // possibly empty. Turning it into an address is `resendFromAddress()`'s job
+    // in the pure notification module, which has tests. Validating it here as
+    // well meant two places had to agree about what the value was, and when they
+    // disagreed the result was a malformed `From` header that silently stopped
+    // every email.
     email:
       resendKey && ownerEmail
-        ? {
-            apiKey: resendKey,
-            ownerEmail,
-            fromDomain:
-              fromDomain && RESEND_DOMAIN_PATTERN.test(fromDomain)
-                ? fromDomain
-                : RESEND_ONBOARDING_DOMAIN,
-          }
+        ? { apiKey: resendKey, ownerEmail, fromDomain: process.env.RESEND_FROM_DOMAIN }
         : null,
     whatsapp:
       botKey && botPhone.length >= 8
@@ -178,8 +168,6 @@ export function getNotificationConfig(): NotificationConfig {
         : null,
   };
 }
-
-const RESEND_DOMAIN_PATTERN = /^[a-z0-9.-]+$/i;
 
 /**
  * Reduces a WhatsApp number to bare international digits.

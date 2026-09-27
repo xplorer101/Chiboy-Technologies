@@ -3,11 +3,11 @@ import "server-only";
 import { Resend } from "resend";
 
 import {
+  resendFromAddress,
   serviceRequestEmailBody,
   serviceRequestEmailSubject,
   type NewServiceRequest,
 } from "@/lib/notifications/template";
-import { RESEND_ONBOARDING_DOMAIN } from "@/lib/notifications/constants";
 
 /**
  * Email notification via Resend.
@@ -63,7 +63,8 @@ export async function sendServiceRequestEmail(
   try {
     const send = resend.emails.send(
       {
-        from: `CHIBOY TECHNOLOGIES <notifications@${config.fromDomain ?? RESEND_ONBOARDING_DOMAIN}>`,
+        // Assembled in one place, as a complete address. See `resendFromAddress`.
+        from: `CHIBOY TECHNOLOGIES <${resendFromAddress(config.fromDomain)}>`,
         to: [config.ownerEmail],
         replyTo: request.email,
         subject: serviceRequestEmailSubject(request.service),

@@ -5,8 +5,9 @@
  * ---------------
  * Nothing here sends anything, reads the environment or touches the database.
  * That makes the part of the notification most likely to be wrong — the
- * formatting of text a stranger typed — testable without a network, and it
- * means the two channels cannot drift into describing a request differently.
+ * formatting of text a stranger typed, and the assembly of the From address —
+ * testable without a network, and it means the two channels cannot drift into
+ * describing a request differently.
  *
  * WHY PLAIN TEXT
  * --------------
@@ -38,6 +39,46 @@ export type NewServiceRequest = {
   attachmentCount: number;
 };
 
+/**
+ * Resend's onboarding address.
+ *
+ * THE ONLY ADDRESS THAT WORKS WITHOUT A VERIFIED DOMAIN, and it is not
+ * configurable: Resend requires this exact address for unverified sending, so
+ * the local part cannot be changed to `notifications@` or anything else. It
+ * delivers only to the address on the Resend account, which is sufficient here
+ * because these notifications go to the business owner.
+ */
+export const RESEND_ONBOARDING_ADDRESS = "onboarding@resend.dev";
+
+/** A domain is letters, digits, dots and hyphens, and nothing else. */
+const DOMAIN_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i;
+
+/**
+ * Builds the `From` address.
+ *
+ * Returns a COMPLETE email address, never a bare domain. The earlier version
+ * returned a domain and let the caller prefix it, which meant the onboarding
+ * fallback — itself already a full address — came out as
+ * `notifications@onboarding@resend.dev`, and Resend rejected every send with an
+ * invalid-`from` error. Composing the address in one place is what prevents that
+ * class of mistake: there is no second step that can disagree about which form
+ * the value is in.
+ *
+ * An absent or implausible domain falls back to the onboarding address rather
+ * than failing the send. A wrong `RESEND_FROM_DOMAIN` should degrade to
+ * "delivered to the account owner" — which still notifies the business — not to
+ * "no notification at all".
+ */
+export function resendFromAddress(configuredDomain: string | undefined): string {
+  const domain = configuredDomain?.trim();
+
+  if (!domain || !DOMAIN_PATTERN.test(domain)) {
+    return RESEND_ONBOARDING_ADDRESS;
+  }
+
+  return `notifications@${domain}`;
+}
+
 const CONTACT_PREFERENCE_LABELS: Record<string, string> = {
   PHONE: "Phone call",
   WHATSAPP: "WhatsApp",
@@ -60,8 +101,10 @@ export function contactPreferenceLabel(value: string): string {
  * escape sequence into whatever the owner opens the message in.
  */
 export function toSingleLine(value: string): string {
-  // eslint-disable-next-line no-control-regex
-  return value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
