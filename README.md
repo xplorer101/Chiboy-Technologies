@@ -126,11 +126,31 @@ never seen by anyone is the failure mode with no user-facing symptom, so
 
 **Email (Resend).** Create a key at <https://resend.com/api-keys> and set
 `RESEND_API_KEY` plus `OWNER_EMAIL`. `RESEND_FROM_DOMAIN` is optional: Resend's
-onboarding domain delivers only to the address on the Resend account, which is
-sufficient because these notifications go to the owner. A verified domain is
-needed only to send to anyone else. Each send carries the request's `reference`
-as its idempotency key, so a retry cannot produce a second copy of the same
-enquiry.
+onboarding address delivers only to the address on the Resend account. A
+verified domain is needed to send anywhere else. Each send carries the request's
+`reference` as its idempotency key, so a retry cannot produce a second copy of
+the same enquiry.
+
+> **Currently live, with a known limitation.** The email channel is configured
+> and verified delivering, but `OWNER_EMAIL` is the address on the **Resend
+> account**, not the business inbox (`chiboytechnologies@gmail.com`) — because
+> Resend refuses to deliver from the onboarding address to any other recipient:
+>
+> > You can only send testing emails to your own email address. To send emails to
+> > other recipients, please verify a domain.
+>
+> So enquiries currently arrive in a personal inbox, from
+> `notifications@…` on Resend's shared onboarding address. **To move them to the
+> business inbox** — which is the intended production configuration, and worth
+> doing because the From address then looks like the business:
+>
+> 1. Verify a domain at <https://resend.com/domains> and add the SPF/DKIM DNS
+>    records Resend gives you. This needs access to the domain registrar.
+> 2. Set `RESEND_FROM_DOMAIN` to the verified domain.
+> 3. Set `OWNER_EMAIL` back to `chiboytechnologies@gmail.com`.
+>
+> No code changes are needed for any of that. Until then, the channel works —
+> it just delivers to the account inbox rather than the business one.
 
 **WhatsApp (CallMeBot).** The owner's phone number must first **send the
 activation message to the CallMeBot number** (+34 644 44 21 48). Until that is
@@ -641,11 +661,11 @@ These are the items that must be resolved first — see
 4. **Production rate limiting.** Set `UPSTASH_REDIS_REST_URL` and
    `UPSTASH_REDIS_REST_TOKEN`, or the forms will use the in-memory fallback,
    which does not work across serverless instances.
-5. **Notification delivery.** Set at least one channel — `OWNER_EMAIL` +
-   `RESEND_API_KEY` for email, or `CALLMEBOT_PHONE` + `CALLMEBOT_APIKEY` for
-   WhatsApp — otherwise submissions are stored but nobody is notified. See
-   [Form notifications](#form-notifications). The WhatsApp channel also needs the
-   one-time activation message sent from the owner's phone.
+5. **Notification delivery.** The email channel is live but currently delivers
+   to the Resend account inbox, not the business inbox — verify a domain and set
+   `RESEND_FROM_DOMAIN` to fix that. The WhatsApp channel is unconfigured and
+   also needs its one-time activation message sent from the owner's phone. See
+   [Form notifications](#form-notifications).
 6. **Privacy policy.** Currently a clearly-marked draft that needs review
    against your actual data handling. If either notification channel stays
    enabled, it names the processors involved, so it must be kept accurate. Note
@@ -752,11 +772,16 @@ hours.
 | Service area | Structured data only | Which areas are covered — deliberately **not** inferred from the office address, and omitted until confirmed |
 | Production domain | Canonical URLs, sitemap, OG tags | `NEXT_PUBLIC_SITE_URL` in production |
 
-The notification code is built and wired, but **no credentials have been
-supplied**, so neither channel has been exercised against the real services. The
-code paths, the failure handling and the formatting are tested; the live
-delivery is not. Configure at least one channel and confirm it with a real
-submission before relying on it.
+The notification code is built and wired. The **email channel is live and
+verified** — a real submission through the Server Action was confirmed to write
+a row and deliver a notification. Two things about it are temporary and recorded
+above: notifications go to the Resend account address rather than the business
+inbox, and the From address is Resend's shared onboarding address. Both are fixed
+by verifying a domain, with no code change.
+
+The **WhatsApp channel has no credentials** and has not been exercised against
+CallMeBot at all. Its formatting and its failure detection are tested, but live
+delivery is not.
 
 ### Operational items before go-live
 
