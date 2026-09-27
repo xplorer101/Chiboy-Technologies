@@ -134,6 +134,65 @@ export const approachSteps = [
   { title: "Support", body: "Staying available for questions and follow-up." },
 ] as const;
 
+/**
+ * The About page.
+ *
+ * WHAT IS DELIBERATELY NOT HERE
+ * -----------------------------
+ * A founding story, a founder's name, a team size, a client list, a client
+ * quote, a certification, an award, or a list of named customers. None of that
+ * has been supplied, and the site-wide rule is that nothing may be invented to
+ * fill a gap — an absent fact is better than a fabricated one, because a
+ * fabricated one is indistinguishable from a real one until someone checks.
+ *
+ * What is here instead: what the business does, drawn from the service
+ * catalogue rather than restated; how it works, from `approachSteps`; and what
+ * a customer can expect, which is a statement of intent and so makes no claim
+ * about the past.
+ *
+ * The one supplied figure, 13 years in business, is rendered from
+ * `site.yearsInBusiness` and never written out by hand. See `getExperienceStatement`.
+ */
+export const aboutPage = {
+  meta: {
+    title: "About",
+    description:
+      "CHIBOY TECHNOLOGIES is a technology services business providing computer software maintenance, software installation, networking, graphics design, technology sales and IT consultancy.",
+  },
+
+  /** The one-sentence statement of what the business is. */
+  purpose:
+    "CHIBOY TECHNOLOGIES provides practical technology solutions to individuals and businesses — keeping software running, setting up new equipment, building networks, and advising on what technology actually solves a given problem.",
+
+  /** Why the business exists, in terms of approach rather than history. */
+  rationale:
+    "Technology problems are usually described by their symptom: a machine that will not start, software that has become slow, a network that will not reach the next room. The work is in finding the actual cause and fixing that, rather than in reinstalling whatever happens to be nearest. Every service follows the same six steps for that reason.",
+
+  /**
+   * What a customer can expect. Framed as commitment rather than achievement, so
+   * each one is a promise the business is making rather than a claim about what
+   * it has already done.
+   */
+  commitments: [
+    {
+      title: "The cause, not the symptom",
+      body: "We look at what is actually wrong before changing anything, and we explain what we find in terms you can follow.",
+    },
+    {
+      title: "Backups before changes",
+      body: "Anything that could be lost is protected before the work starts, not after something goes wrong.",
+    },
+    {
+      title: "An explanation at the end",
+      body: "You are told what was done, why, and what to watch for — so the same problem is easier to handle next time.",
+    },
+    {
+      title: "Work that fits the need",
+      body: "We recommend an approach that suits the requirement and the budget, including when that means recommending less than you asked for.",
+    },
+  ],
+} as const;
+
 export const contactReasons = [
   "Discuss a technical problem",
   "Request a quotation",
