@@ -12,7 +12,7 @@ import {
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
 import { minutesUntilReset, rateLimit } from "@/lib/rate-limit";
-import { notifyNewServiceRequest } from "@/lib/notifications";
+import { notifyNewServiceRequest, sendCustomerConfirmationEmail } from "@/lib/notifications";
 import { readText } from "@/lib/actions/read-form-data";
 import {
   GENERIC_ERROR_MESSAGE,
@@ -227,6 +227,42 @@ export async function submitServiceRequest(
       error instanceof Error ? error.message : "unknown error",
     );
   });
+
+  // Send a branded confirmation email to the customer.
+  // This is best-effort: the request is already stored, so a failure here
+  // must not affect the visitor's success response. Errors are logged only.
+  try {
+    const serverEnv = await import("@/lib/env").then((m) => m.getServerEnv());
+    if (serverEnv.RESEND_API_KEY && serverEnv.OWNER_EMAIL) {
+      await sendCustomerConfirmationEmail(
+        {
+          reference,
+          name: values.fullName,
+          phone: values.phone,
+          email: values.email,
+          service: serviceName || "Not specified",
+          location: values.location,
+          contactPreference: values.contactPref,
+          description: values.description,
+          attachmentCount: storedFiles.length,
+        },
+        {
+          apiKey: serverEnv.RESEND_API_KEY,
+          ownerEmail: serverEnv.OWNER_EMAIL,
+          fromDomain: serverEnv.RESEND_FROM_DOMAIN,
+        },
+      ).catch((error: unknown) => {
+        console.error(
+          `[service-request] Customer confirmation for ${reference} failed:`,
+          error instanceof Error ? error.message : "unknown error",
+        );
+      });
+    }
+  } catch {
+    // getServerEnv can throw if DATABASE_URL is missing — but we already
+    // succeeded in storing the request, so DATABASE_URL is present.
+    // This catch is defensive only.
+  }
 
   return {
     status: "success",

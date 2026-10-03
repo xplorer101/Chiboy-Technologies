@@ -189,3 +189,163 @@ function describeAttachments(count: number): string {
   if (count <= 0) return "none";
   return count === 1 ? "1 file" : `${count} files`;
 }
+
+/**
+ * Escapes HTML special characters to prevent injection.
+ * Every value interpolated into the HTML template comes from a public form,
+ * so this is mandatory — not optional.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Customer confirmation email — branded HTML.
+ *
+ * Uses inline CSS only (no external stylesheets) for maximum email client compatibility.
+ * Colours match the site palette: Deep Navy (#1B3A6B), Rich Gold (#C8A951), White.
+ * All user-supplied values are HTML-escaped before interpolation.
+ */
+export function customerConfirmationEmailHtml(request: NewServiceRequest): string {
+  const safeName = escapeHtml(request.name);
+  const safeReference = escapeHtml(request.reference);
+  const safeService = escapeHtml(request.service);
+  const safeLocation = escapeHtml(request.location);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Request Confirmation</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1B3A6B; background-color: #F5F5F5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF;">
+    <!-- Header -->
+    <tr>
+      <td style="background-color: #1B3A6B; padding: 32px 24px; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">CHIBOY TECHNOLOGIES</h1>
+        <p style="margin: 8px 0 0; font-size: 14px; color: #C8A951; font-weight: 500;">Service Request Confirmation</p>
+      </td>
+    </tr>
+
+    <!-- Gold accent bar -->
+    <tr>
+      <td style="background-color: #C8A951; height: 4px;"></td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="padding: 40px 32px;">
+        <p style="margin: 0 0 16px; font-size: 16px; color: #1B3A6B;">Dear <strong>${safeName}</strong>,</p>
+
+        <p style="margin: 0 0 24px; font-size: 16px; color: #1B3A6B;">Thank you for contacting CHIBOY TECHNOLOGIES. We have received your service request and will review it shortly.</p>
+
+        <!-- Details card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #E0E0E0; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+          <tr>
+            <td style="background-color: #1B3A6B; padding: 16px 20px;">
+              <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #FFFFFF;">Request Details</h2>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px; background-color: #FAFAFA;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 15px; color: #1B3A6B;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #4A4A4A; width: 30%;">Reference:</td>
+                  <td style="padding: 8px 0; font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace; font-size: 14px; color: #1B3A6B;">${safeReference}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #4A4A4A;">Service:</td>
+                  <td style="padding: 8px 0;">${safeService}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #4A4A4A;">Location:</td>
+                  <td style="padding: 8px 0;">${safeLocation}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin: 0 0 16px; font-size: 16px; color: #1B3A6B;">Our team will review your request and contact you within one business day using your preferred method.</p>
+
+        <p style="margin: 0 0 24px; font-size: 16px; color: #1B3A6B;">If you need to add any information before we reach out, please reply to this email or contact us directly:</p>
+
+        <!-- Contact info -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+          <tr>
+            <td style="padding: 12px 16px; background-color: #F8F8F8; border-radius: 6px; border: 1px solid #E8E8E8;">
+              <p style="margin: 0; font-size: 14px; color: #1B3A6B;"><strong>Phone/WhatsApp:</strong> +234 810 285 4969</p>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Email:</strong> chiboytechnologies@gmail.com</p>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Address:</strong> Suite 12, City Shoppers Plaza, Kuje, FCT Abuja</p>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Hours:</strong> Monday–Friday, 8:00 AM – 6:00 PM</p>
+            </td>
+          </tr>
+        </table>
+
+        <hr style="border: none; border-top: 1px solid #E0E0E0; margin: 24px 0;">
+
+        <p style="margin: 0; font-size: 13px; color: #6B6B6B;">This is an automated confirmation. Please do not reply to this address for support — use the contact details above.</p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #1B3A6B; padding: 24px 32px; text-align: center;">
+        <p style="margin: 0 0 8px; font-size: 14px; color: #C8A951; font-weight: 500;">CHIBOY TECHNOLOGIES</p>
+        <p style="margin: 0; font-size: 12px; color: #999;">Suite 12, City Shoppers Plaza, Kuje, FCT Abuja</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Plain-text fallback for the customer confirmation email.
+ * Used as the `text` part in the multipart email.
+ */
+export function customerConfirmationEmailText(request: NewServiceRequest): string {
+  const lines = [
+    "CHIBOY TECHNOLOGIES — Service Request Confirmation",
+    "",
+    `Dear ${toSingleLine(request.name)},`,
+    "",
+    "Thank you for contacting CHIBOY TECHNOLOGIES. We have received your service request and will review it shortly.",
+    "",
+    "Request Details",
+    "---------------",
+    `Reference:  ${request.reference}`,
+    `Service:    ${toSingleLine(request.service)}`,
+    `Location:   ${toSingleLine(request.location)}`,
+    "",
+    "Our team will review your request and contact you within one business day using your preferred method.",
+    "",
+    "If you need to add any information before we reach out, please contact us directly:",
+    "",
+    "Phone/WhatsApp: +234 810 285 4969",
+    "Email: chiboytechnologies@gmail.com",
+    "Address: Suite 12, City Shoppers Plaza, Kuje, FCT Abuja",
+    "Hours: Monday–Friday, 8:00 AM – 6:00 PM",
+    "",
+    "---",
+    "This is an automated confirmation. Please do not reply to this address for support — use the contact details above.",
+    "",
+    "CHIBOY TECHNOLOGIES",
+    "Suite 12, City Shoppers Plaza, Kuje, FCT Abuja",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Subject line for the customer confirmation email.
+ */
+export function customerConfirmationEmailSubject(reference: string): string {
+  return `Your Service Request Confirmation — ${toSingleLine(reference)}`;
+}

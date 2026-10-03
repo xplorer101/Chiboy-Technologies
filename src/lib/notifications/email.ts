@@ -6,6 +6,9 @@ import {
   resendFromAddress,
   serviceRequestEmailBody,
   serviceRequestEmailSubject,
+  customerConfirmationEmailHtml,
+  customerConfirmationEmailText,
+  customerConfirmationEmailSubject,
   type NewServiceRequest,
 } from "@/lib/notifications/template";
 
@@ -154,4 +157,63 @@ function describe(error: unknown): string {
       : error.message;
   }
   return "unknown error";
+}
+
+/**
+ * Sends a branded HTML confirmation email to the customer.
+ *
+ * This is a best-effort notification: the request is already stored, so a failure
+ * here must not affect the visitor's success response. Errors are logged but
+ * never thrown.
+ *
+ * Uses the same Resend config (API key, from domain) as the owner notification.
+ * The `from` address is the same verified-domain address so the customer sees
+ * a consistent sender identity.
+ */
+export async function sendCustomerConfirmationEmail(
+  request: NewServiceRequest,
+  config: { apiKey: string; ownerEmail: string; fromDomain?: string },
+): Promise<NotificationResult> {
+  const resend = new Resend(config.apiKey);
+  const fromAddress = `CHIBOY TECHNOLOGIES <${resendFromAddress(config.fromDomain)}>`;
+  const subject = customerConfirmationEmailSubject(request.reference);
+  const html = customerConfirmationEmailHtml(request);
+  const text = customerConfirmationEmailText(request);
+
+  console.log(`[notify:email:customer] Attempting to send confirmation to ${request.email} from ${fromAddress} (reference: ${request.reference})`);
+
+  try {
+    const send = resend.emails.send(
+      {
+        from: fromAddress,
+        to: [request.email],
+        subject,
+        html,
+        text,
+      },
+      {
+        // Different idempotency key from the owner notification so both can
+        // coexist for the same reference without colliding.
+        idempotencyKey: `customer-${request.reference}`,
+      },
+    );
+
+    const result = await withDeadline(send, SEND_TIMEOUT_MS);
+
+    if (result.timedOut) {
+      console.log(`[notify:email:customer] TIMEOUT after ${SEND_TIMEOUT_MS}ms (reference: ${request.reference})`);
+      return { ok: false, channel: "email", reason: `timed out after ${SEND_TIMEOUT_MS}ms` };
+    }
+
+    if (result.value.error) {
+      console.log(`[notify:email:customer] Resend API error: ${result.value.error.message} (reference: ${request.reference})`);
+      return { ok: false, channel: "email", reason: redact(result.value.error.message) };
+    }
+
+    console.log(`[notify:email:customer] SUCCESS: Resend accepted (id: ${result.value.data?.id ?? "unknown"}) (reference: ${request.reference})`);
+    return { ok: true };
+  } catch (error) {
+    console.log(`[notify:email:customer] EXCEPTION: ${describe(error)} (reference: ${request.reference})`);
+    return { ok: false, channel: "email", reason: redact(describe(error)) };
+  }
 }

@@ -130,3 +130,5 @@ function safeReason(reason: unknown): string {
   if (typeof reason === "string") return reason.slice(0, 200);
   return "unknown error";
 }
+
+export { sendCustomerConfirmationEmail } from "@/lib/notifications/email";
