@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
-import { Emblem } from "@/components/brand/Emblem";
 import { ButtonLink } from "@/components/ui/Button";
 import { PlaceholderValue } from "@/components/ui/Field";
 import {
@@ -31,11 +30,13 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2.5">
-              <Emblem className="size-10 shrink-0" />
-              <p className="text-base font-bold tracking-tight text-white">
-                CHIBOY
-                <span className="block font-semibold text-gold-400">TECHNOLOGIES</span>
-              </p>
+              <img
+                src="/z.png"
+                alt="CHIBOY TECHNOLOGIES"
+                width={611}
+                height={630}
+                className="h-10 w-auto shrink-0"
+              />
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed">
               Practical technology solutions for individuals and businesses — software,

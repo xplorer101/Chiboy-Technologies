@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, Phone, X } from "lucide-react";
-import { Emblem } from "@/components/brand/Emblem";
+import Image from "next/image";
 import { ButtonLink } from "@/components/ui/Button";
 import { navigation } from "@/content/site";
 import { cn } from "@/lib/utils/cn";
@@ -85,11 +85,14 @@ export function Header({
           className="flex shrink-0 items-center gap-2.5"
           aria-label="CHIBOY TECHNOLOGIES — home"
         >
-          <Emblem className="size-9 shrink-0" />
-          <span className="text-sm leading-tight font-bold tracking-tight text-navy-900 sm:text-base">
-            CHIBOY
-            <span className="block font-semibold text-navy-600">TECHNOLOGIES</span>
-          </span>
+          <Image
+            src="/z.png"
+            alt=""
+            width={611}
+            height={630}
+            className="h-9 w-auto shrink-0"
+            priority
+          />
         </Link>
 
         {/* Desktop navigation */}
