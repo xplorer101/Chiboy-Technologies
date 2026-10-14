@@ -99,19 +99,26 @@ export async function sendServiceRequestEmail(
     const result = await withDeadline(send, SEND_TIMEOUT_MS);
 
     if (result.timedOut) {
-      console.log(`[notify:email] TIMEOUT after ${SEND_TIMEOUT_MS}ms (reference: ${request.reference})`);
+      console.error(`[notify:email] TIMEOUT after ${SEND_TIMEOUT_MS}ms (reference: ${request.reference})`);
       return { ok: false, channel: "email", reason: `timed out after ${SEND_TIMEOUT_MS}ms` };
     }
 
     if (result.value.error) {
-      console.log(`[notify:email] Resend API error: ${result.value.error.message} (reference: ${request.reference})`);
+      console.error(
+        `[notify:email] Resend rejected the message (reference: ${request.reference}): ${redact(JSON.stringify(result.value.error))}`,
+      );
       return { ok: false, channel: "email", reason: redact(result.value.error.message) };
     }
 
-    console.log(`[notify:email] SUCCESS: Resend accepted (id: ${result.value.data?.id ?? "unknown"}) (reference: ${request.reference})`);
+    console.log(
+      `[notify:email] SUCCESS: Resend accepted (reference: ${request.reference}): ${redact(JSON.stringify(result.value))}`,
+    );
     return { ok: true };
   } catch (error) {
-    console.log(`[notify:email] EXCEPTION: ${describe(error)} (reference: ${request.reference})`);
+    console.error(
+      `[notify:email] EXCEPTION before Resend accepted the message (reference: ${request.reference}):`,
+      redact(describe(error)),
+    );
     return { ok: false, channel: "email", reason: redact(describe(error)) };
   }
 }
@@ -190,7 +197,6 @@ export async function sendCustomerConfirmationEmail(
   request: NewServiceRequest,
   config: {
     apiKey: string;
-    ownerEmail: string;
     supportEmail?: string | undefined;
     emailFrom?: string | undefined;
     fromDomain?: string | undefined;
@@ -205,7 +211,7 @@ export async function sendCustomerConfirmationEmail(
   const html = customerConfirmationEmailHtml(request, replyTo);
   const text = customerConfirmationEmailText(request, replyTo);
 
-  console.log(`[notify:email:customer] Attempting to send confirmation to ${request.email} from ${fromAddress} (reference: ${request.reference})`);
+  console.log(`[notify:email:customer] sending to ${request.email} from ${fromAddress} (reference: ${request.reference})`);
 
   try {
     const send = resend.emails.send(
@@ -227,19 +233,30 @@ export async function sendCustomerConfirmationEmail(
     const result = await withDeadline(send, SEND_TIMEOUT_MS);
 
     if (result.timedOut) {
-      console.log(`[notify:email:customer] TIMEOUT after ${SEND_TIMEOUT_MS}ms (reference: ${request.reference})`);
+      console.error(
+        `[notify:email:customer] TIMEOUT after ${SEND_TIMEOUT_MS}ms (reference: ${request.reference})`,
+      );
       return { ok: false, channel: "email", reason: `timed out after ${SEND_TIMEOUT_MS}ms` };
     }
 
     if (result.value.error) {
-      console.log(`[notify:email:customer] Resend API error: ${result.value.error.message} (reference: ${request.reference})`);
+      // The full error body, redacted. Resend echoes request fields in some
+      // errors, so this is scrubbed by `redact` before it is written.
+      console.error(
+        `[notify:email:customer] Resend rejected the message (reference: ${request.reference}): ${redact(JSON.stringify(result.value.error))}`,
+      );
       return { ok: false, channel: "email", reason: redact(result.value.error.message) };
     }
 
-    console.log(`[notify:email:customer] SUCCESS: Resend accepted (id: ${result.value.data?.id ?? "unknown"}) (reference: ${request.reference})`);
+    console.log(
+      `[notify:email:customer] SUCCESS: Resend accepted (reference: ${request.reference}): ${redact(JSON.stringify(result.value))}`,
+    );
     return { ok: true };
   } catch (error) {
-    console.log(`[notify:email:customer] EXCEPTION: ${describe(error)} (reference: ${request.reference})`);
+    console.error(
+      `[notify:email:customer] EXCEPTION before Resend accepted the message (reference: ${request.reference}):`,
+      redact(describe(error)),
+    );
     return { ok: false, channel: "email", reason: redact(describe(error)) };
   }
 }

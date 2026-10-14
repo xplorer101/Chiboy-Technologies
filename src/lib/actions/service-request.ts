@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import { RequestStatus } from "@/generated/prisma/enums";
 
 import {
@@ -10,9 +12,11 @@ import {
 } from "@/lib/validation/forms";
 import { imageUrlsSchema } from "@/lib/validation/images";
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
+import { getConfirmationEmailConfig } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { minutesUntilReset, rateLimit } from "@/lib/rate-limit";
 import { notifyNewServiceRequest, sendCustomerConfirmationEmail } from "@/lib/notifications";
+import type { NewServiceRequest } from "@/lib/notifications/template";
 import { readText } from "@/lib/actions/read-form-data";
 import {
   GENERIC_ERROR_MESSAGE,
@@ -194,14 +198,7 @@ export async function submitServiceRequest(
 
   // The request is stored. From here on, nothing can make the visitor's
   // submission "not have happened", so nothing below is allowed to reject.
-  //
-  // `notifyNewServiceRequest` catches its own errors and resolves with a
-  // per-channel outcome, but it is wrapped anyway: the request is already
-  // durable, and an unexpected throw between here and the return must not
-  // present a saved request as a failure. The trade is that an unforeseen bug
-  // inside the notifier is invisible to the caller — it is logged, and the
-  // business still has the record.
-  await notifyNewServiceRequest({
+  const requestPayload = {
     reference,
     name: values.fullName,
     phone: values.phone,
@@ -212,55 +209,104 @@ export async function submitServiceRequest(
     description: values.description,
     attachmentCount: imageUrls.length,
     imageUrls,
-  }).catch((error: unknown) => {
+  } satisfies NewServiceRequest;
+
+  // `notifyNewServiceRequest` catches its own errors and resolves with a
+  // per-channel outcome, but it is wrapped anyway: the request is already
+  // durable, and an unexpected throw between here and the return must not
+  // present a saved request as a failure. The trade is that an unforeseen bug
+  // inside the notifier is invisible to the caller — it is logged, and the
+  // business still has the record.
+  await notifyNewServiceRequest(requestPayload).catch((error: unknown) => {
     console.error(
       `[service-request] Notification for ${reference} failed unexpectedly:`,
       error instanceof Error ? error.message : "unknown error",
     );
   });
 
-  // Send a branded confirmation email to the customer.
-  // This is best-effort: the request is already stored, so a failure here
-  // must not affect the visitor's success response. Errors are logged only.
-  try {
-    const serverEnv = await import("@/lib/env").then((m) => m.getServerEnv());
-    if (serverEnv.RESEND_API_KEY && (serverEnv.OWNER_EMAIL || serverEnv.SUPPORT_EMAIL)) {
-      await sendCustomerConfirmationEmail(
-        {
-          reference,
-          name: values.fullName,
-          phone: values.phone,
-          email: values.email,
-          service: serviceName || "Not specified",
-          location: values.location,
-          contactPreference: values.contactPref,
-          description: values.description,
-          attachmentCount: imageUrls.length,
-          imageUrls,
-        },
-        {
-          apiKey: serverEnv.RESEND_API_KEY,
-          ownerEmail: serverEnv.OWNER_EMAIL ?? "",
-          supportEmail: serverEnv.SUPPORT_EMAIL || undefined,
-          emailFrom: serverEnv.EMAIL_FROM || undefined,
-          fromDomain: serverEnv.RESEND_FROM_DOMAIN,
-        },
-      ).catch((error: unknown) => {
-        console.error(
-          `[service-request] Customer confirmation for ${reference} failed:`,
-          error instanceof Error ? error.message : "unknown error",
-        );
-      });
-    }
-  } catch {
-    // getServerEnv can throw if DATABASE_URL is missing — but we already
-    // succeeded in storing the request, so DATABASE_URL is present.
-    // This catch is defensive only.
-  }
+  // The customer confirmation is scheduled AFTER the response is returned, with
+  // `after()`. Two reasons, and the second is the one that was actually losing
+  // these emails:
+  //
+  //  1. The visitor does not wait on a second email round trip to see their
+  //     reference.
+  //  2. Awaiting it inline here made it the *last* of several sequential,
+  //     individually-8-second deadlines (rate limit, database, owner email,
+  //     WhatsApp). A slow Resend could push the total past the serverless
+  //     function's budget, and the confirmation — being last — was the work the
+  //     runtime cancelled before it ever reached Resend.
+  //
+  // `after()` still registers the promise with the runtime, so the send is
+  // awaited to completion rather than abandoned when the response is sent.
+  await runAfterResponse(() => sendCustomerConfirmation(requestPayload));
 
   return {
     status: "success",
     message: SUCCESS_MESSAGE,
     data: { reference },
   };
+}
+
+/**
+ * Runs post-response work when the runtime supports it, otherwise awaits it.
+ *
+ * `after()` throws outside a request scope — a unit test, or any script that
+ * imports this action directly. Falling back to an inline await keeps those
+ * callers working and keeps the task's own error handling the single thing that
+ * decides what happens on failure, rather than having two different paths.
+ */
+async function runAfterResponse(task: () => Promise<void>): Promise<void> {
+  try {
+    after(task);
+  } catch {
+    await task();
+  }
+}
+
+/**
+ * Sends the customer confirmation. Best-effort by construction: the request is
+ * already stored, so this must never throw and never affect the visitor.
+ *
+ * EVERY WAY IT CAN BE SKIPPED OR FAIL IS LOGGED. "The customer never got a
+ * confirmation and the logs say nothing" was the original complaint, and it is
+ * the failure mode this function exists to remove: a skip is now as visible as
+ * a failure, and both name their reason.
+ *
+ * The recipient is the customer; the `From` and `replyTo` resolve inside the
+ * template module, defaulting to the verified support address.
+ */
+async function sendCustomerConfirmation(request: NewServiceRequest): Promise<void> {
+  const config = getConfirmationEmailConfig();
+
+  if (!config) {
+    console.error(
+      `[service-request] ${request.reference}: confirmation email skipped (reason: RESEND_API_KEY is not set)`,
+    );
+    return;
+  }
+
+  console.log(
+    `[service-request] ${request.reference}: sending confirmation email to ${request.email}`,
+  );
+
+  try {
+    const result = await sendCustomerConfirmationEmail(request, config);
+
+    if (result.ok) {
+      console.log(
+        `[service-request] ${request.reference}: confirmation email accepted by Resend`,
+      );
+    } else {
+      console.error(
+        `[service-request] ${request.reference}: confirmation email failed (reason: ${result.reason})`,
+      );
+    }
+  } catch (error) {
+    // Documented not to throw, but a bug here must still not surface as a
+    // failed submission for a request that is already in the database.
+    console.error(
+      `[service-request] ${request.reference}: confirmation email threw unexpectedly:`,
+      error instanceof Error ? error.message : "unknown error",
+    );
+  }
 }

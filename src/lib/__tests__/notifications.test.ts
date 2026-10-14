@@ -7,7 +7,6 @@ import {
   resolveFromAddress,
   resolveSupportEmail,
   resendFromAddress,
-  RESEND_ONBOARDING_ADDRESS,
   serviceRequestEmailBody,
   serviceRequestEmailHtml,
   serviceRequestEmailSubject,
@@ -60,7 +59,7 @@ describe("resendFromAddress", () => {
    */
   it("returns a complete address for a configured domain", () => {
     expect(resendFromAddress("chiboytechnologies.com")).toBe(
-      "notifications@chiboytechnologies.com",
+      "support@chiboytechnologies.com",
     );
   });
 
@@ -70,18 +69,18 @@ describe("resendFromAddress", () => {
     expect(address.split("@")).toHaveLength(2);
   });
 
-  it("uses Resend's onboarding address when no domain is configured", () => {
-    // Not `notifications@onboarding@resend.dev` — Resend requires this exact
-    // address for unverified sending and the local part cannot be changed.
-    expect(resendFromAddress(undefined)).toBe(RESEND_ONBOARDING_ADDRESS);
-    expect(resendFromAddress("")).toBe(RESEND_ONBOARDING_ADDRESS);
-    expect(resendFromAddress("   ")).toBe(RESEND_ONBOARDING_ADDRESS);
-    expect(RESEND_ONBOARDING_ADDRESS).toBe("onboarding@resend.dev");
+  it("falls back to the verified support address, not the onboarding address", () => {
+    // `onboarding@resend.dev` only delivers to the account owner, so a customer
+    // confirmation sent from it is rejected. The fallback has to be an address
+    // on the verified domain, or the customer email cannot be delivered at all.
+    expect(resendFromAddress(undefined)).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(resendFromAddress("")).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(resendFromAddress("   ")).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(SUPPORT_EMAIL_ADDRESS).toBe("support@chiboytechnologies.com");
   });
 
-  it("degrades to the onboarding address rather than failing the send", () => {
-    // A malformed domain should still notify the business owner, just not from
-    // the address they asked for.
+  it("degrades to the verified support address rather than failing the send", () => {
+    // A malformed domain should still notify from the address customers expect.
     for (const bad of [
       "not a domain",
       "chiboytechnologies.com; subject=hi",
@@ -93,15 +92,15 @@ describe("resendFromAddress", () => {
       "double..dot.com",
       "<script>",
     ]) {
-      expect(resendFromAddress(bad)).toBe(RESEND_ONBOARDING_ADDRESS);
+      expect(resendFromAddress(bad)).toBe(SUPPORT_EMAIL_ADDRESS);
     }
   });
 
   it("accepts a subdomain and a hyphenated domain", () => {
     expect(resendFromAddress("mail.chiboytechnologies.com")).toBe(
-      "notifications@mail.chiboytechnologies.com",
+      "support@mail.chiboytechnologies.com",
     );
-    expect(resendFromAddress("my-tech.co")).toBe("notifications@my-tech.co");
+    expect(resendFromAddress("my-tech.co")).toBe("support@my-tech.co");
   });
 
   it("trims surrounding whitespace rather than rejecting a padded value", () => {
@@ -109,10 +108,22 @@ describe("resendFromAddress", () => {
     // the helpful behaviour, and it is safe: the remaining string is still
     // matched against the full pattern, so an embedded CRLF is still rejected.
     expect(resendFromAddress("  chiboytechnologies.com  ")).toBe(
-      "notifications@chiboytechnologies.com",
+      "support@chiboytechnologies.com",
     );
     expect(resendFromAddress("chiboytechnologies.com\n")).toBe(
-      "notifications@chiboytechnologies.com",
+      "support@chiboytechnologies.com",
+    );
+  });
+
+  it("strips surrounding quotes copied from an env file", () => {
+    // `RESEND_FROM_DOMAIN="chiboytechnologies.com"` pasted into the dashboard
+    // keeps the quotes. Failing that value would send every email from the
+    // fallback; unwrapping it delivers from the domain the operator configured.
+    expect(resendFromAddress('"chiboytechnologies.com"')).toBe(
+      "support@chiboytechnologies.com",
+    );
+    expect(resendFromAddress("'chiboytechnologies.com'")).toBe(
+      "support@chiboytechnologies.com",
     );
   });
 });
@@ -301,27 +312,39 @@ describe("resolveFromAddress", () => {
     );
   });
 
+  it("unwraps a quoted EMAIL_FROM instead of falling back", () => {
+    // `EMAIL_FROM='"Chiboy <noreply@chiboytechnologies.com>"'` pasted from an
+    // env file is a valid header wearing quotes. Without stripping them it fails
+    // validation and every send goes from the composed default instead.
+    expect(
+      resolveFromAddress(
+        '"Chiboy Technologies <noreply@chiboytechnologies.com>"',
+        "chiboytechnologies.com",
+      ),
+    ).toBe("Chiboy Technologies <noreply@chiboytechnologies.com>");
+  });
+
   it("rejects header injection rather than passing it through", () => {
     // A CRLF here is the character that turns one header into two. Falling back
     // is the safe direction: the send still happens, from the domain address.
     const injected = "noreply@chiboytechnologies.com\r\nBcc: attacker@example.com";
     expect(resolveFromAddress(injected, "chiboytechnologies.com")).toBe(
-      "CHIBOY TECHNOLOGIES <notifications@chiboytechnologies.com>",
+      "CHIBOY TECHNOLOGIES <support@chiboytechnologies.com>",
     );
     expect(resolveFromAddress("no address here", "chiboytechnologies.com")).toBe(
-      "CHIBOY TECHNOLOGIES <notifications@chiboytechnologies.com>",
+      "CHIBOY TECHNOLOGIES <support@chiboytechnologies.com>",
     );
   });
 
   it("composes from the domain when EMAIL_FROM is unset", () => {
     expect(resolveFromAddress(undefined, "chiboytechnologies.com")).toBe(
-      "CHIBOY TECHNOLOGIES <notifications@chiboytechnologies.com>",
+      "CHIBOY TECHNOLOGIES <support@chiboytechnologies.com>",
     );
   });
 
-  it("falls back to the onboarding address when neither is usable", () => {
+  it("falls back to the verified support address when neither is usable", () => {
     expect(resolveFromAddress(undefined, undefined)).toBe(
-      `CHIBOY TECHNOLOGIES <${RESEND_ONBOARDING_ADDRESS}>`,
+      `CHIBOY TECHNOLOGIES <${SUPPORT_EMAIL_ADDRESS}>`,
     );
   });
 });

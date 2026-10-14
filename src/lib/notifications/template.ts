@@ -22,6 +22,8 @@
  * otherwise be executed in the owner's mail client.
  */
 
+import { normaliseEnvValue } from "@/lib/utils/env-value";
+
 /** The subset of a stored request a notification needs. */
 export type NewServiceRequest = {
   /** Human-quotable id, e.g. `SR-20260927-A1B2C`. */
@@ -46,17 +48,6 @@ export type NewServiceRequest = {
   imageUrls?: readonly string[] | undefined;
 };
 
-/**
- * Resend's onboarding address.
- *
- * THE ONLY ADDRESS THAT WORKS WITHOUT A VERIFIED DOMAIN, and it is not
- * configurable: Resend requires this exact address for unverified sending, so
- * the local part cannot be changed to `notifications@` or anything else. It
- * delivers only to the address on the Resend account, which is sufficient here
- * because these notifications go to the business owner.
- */
-export const RESEND_ONBOARDING_ADDRESS = "onboarding@resend.dev";
-
 /** A domain is letters, digits, dots and hyphens, and nothing else. */
 const DOMAIN_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i;
 
@@ -71,19 +62,29 @@ const DOMAIN_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-
  * class of mistake: there is no second step that can disagree about which form
  * the value is in.
  *
- * An absent or implausible domain falls back to the onboarding address rather
- * than failing the send. A wrong `RESEND_FROM_DOMAIN` should degrade to
- * "delivered to the account owner" — which still notifies the business — not to
- * "no notification at all".
+ * THE LOCAL PART IS `support@`, AND THE FALLBACK IS THE VERIFIED DOMAIN
+ * --------------------------------------------------------------------
+ * `support@chiboytechnologies.com` is the sender identity customers see, and
+ * `chiboytechnologies.com` is the verified sending domain, so a confirmation can
+ * reach a customer from it. Resend's `onboarding@resend.dev` is deliberately NOT
+ * the fallback any more: that address only delivers to the account owner, so a
+ * customer confirmation sent from it is rejected outright — precisely the email
+ * this module exists to deliver. A missing or implausible `RESEND_FROM_DOMAIN`
+ * therefore degrades to the verified support address, not to a domain that
+ * cannot deliver.
+ *
+ * A quoted value is unwrapped before it is validated: `"chiboytechnologies.com"`
+ * copied out of an env file is a valid domain wearing two characters of
+ * punctuation, and failing it here would send every email from the fallback.
  */
 export function resendFromAddress(configuredDomain: string | undefined): string {
-  const domain = configuredDomain?.trim();
+  const domain = normaliseEnvValue(configuredDomain);
 
   if (!domain || !DOMAIN_PATTERN.test(domain)) {
-    return RESEND_ONBOARDING_ADDRESS;
+    return SUPPORT_EMAIL_ADDRESS;
   }
 
-  return `notifications@${domain}`;
+  return `support@${domain}`;
 }
 
 /**
@@ -107,7 +108,7 @@ const ADDRESS_PATTERN = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/;
  * inbox, not at an empty string that silently drops replies.
  */
 export function resolveSupportEmail(configured: string | undefined): string {
-  const value = configured?.trim();
+  const value = normaliseEnvValue(configured);
   return value && ADDRESS_PATTERN.test(value) ? value : SUPPORT_EMAIL_ADDRESS;
 }
 
@@ -125,7 +126,7 @@ export function resolveFromAddress(
   emailFrom: string | undefined,
   configuredDomain: string | undefined,
 ): string {
-  const candidate = emailFrom?.trim();
+  const candidate = normaliseEnvValue(emailFrom);
 
   if (candidate && isSafeFromHeader(candidate)) return candidate;
 

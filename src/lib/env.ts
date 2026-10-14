@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isPlaceholder } from "@/lib/placeholder";
+import { normaliseEnvValue, normaliseOptionalEnvValue } from "@/lib/utils/env-value";
 
 /**
  * Environment validation.
@@ -102,19 +103,24 @@ export function getServerEnv(): ServerEnv {
   if (cachedServerEnv) return cachedServerEnv;
 
   const parsed = serverEnvSchema.safeParse({
-    DATABASE_URL: process.env.DATABASE_URL,
-    DIRECT_URL: process.env.DIRECT_URL,
-    OWNER_EMAIL: process.env.OWNER_EMAIL,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    RESEND_FROM_DOMAIN: process.env.RESEND_FROM_DOMAIN,
-    EMAIL_FROM: process.env.EMAIL_FROM,
-    SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
-    CALLMEBOT_PHONE: process.env.CALLMEBOT_PHONE,
-    CALLMEBOT_APIKEY: process.env.CALLMEBOT_APIKEY,
-    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
-    UPLOAD_DIR: process.env.UPLOAD_DIR,
-    MAX_UPLOAD_MB: process.env.MAX_UPLOAD_MB,
+    // Every value is normalised first. A trailing newline or a pair of quotes
+    // pasted in from a `.env` file or the dashboard is invisible, and it breaks
+    // the checks below in exactly the way that is hardest to diagnose: a valid
+    // address that "must be an email" fails, or a key that looks present is
+    // rejected by the third party.
+    DATABASE_URL: normaliseEnvValue(process.env.DATABASE_URL),
+    DIRECT_URL: normaliseEnvValue(process.env.DIRECT_URL),
+    OWNER_EMAIL: normaliseEnvValue(process.env.OWNER_EMAIL),
+    RESEND_API_KEY: normaliseEnvValue(process.env.RESEND_API_KEY),
+    RESEND_FROM_DOMAIN: normaliseEnvValue(process.env.RESEND_FROM_DOMAIN),
+    EMAIL_FROM: normaliseEnvValue(process.env.EMAIL_FROM),
+    SUPPORT_EMAIL: normaliseEnvValue(process.env.SUPPORT_EMAIL),
+    CALLMEBOT_PHONE: normaliseEnvValue(process.env.CALLMEBOT_PHONE),
+    CALLMEBOT_APIKEY: normaliseEnvValue(process.env.CALLMEBOT_APIKEY),
+    UPSTASH_REDIS_REST_URL: normaliseEnvValue(process.env.UPSTASH_REDIS_REST_URL),
+    UPSTASH_REDIS_REST_TOKEN: normaliseEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN),
+    UPLOAD_DIR: normaliseOptionalEnvValue(process.env.UPLOAD_DIR),
+    MAX_UPLOAD_MB: normaliseOptionalEnvValue(process.env.MAX_UPLOAD_MB),
   });
 
   if (!parsed.success) {
@@ -142,8 +148,8 @@ export function hasRedisConfig(): boolean {
  * unrelated failures that would fail the whole form together.
  */
 export function getRateLimitConfig(): { url: string; token: string } | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = normaliseEnvValue(process.env.UPSTASH_REDIS_REST_URL);
+  const token = normaliseEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN);
   return url && token ? { url, token } : null;
 }
 
@@ -174,11 +180,11 @@ export type NotificationConfig = {
 };
 
 export function getNotificationConfig(): NotificationConfig {
-  const ownerEmail = process.env.OWNER_EMAIL?.trim() ?? "";
-  const supportEmail = process.env.SUPPORT_EMAIL?.trim() ?? "";
-  const emailFrom = process.env.EMAIL_FROM?.trim() ?? "";
-  const resendKey = process.env.RESEND_API_KEY?.trim() ?? "";
-  const botKey = process.env.CALLMEBOT_APIKEY?.trim() ?? "";
+  const ownerEmail = normaliseEnvValue(process.env.OWNER_EMAIL);
+  const supportEmail = normaliseEnvValue(process.env.SUPPORT_EMAIL);
+  const emailFrom = normaliseEnvValue(process.env.EMAIL_FROM);
+  const resendKey = normaliseEnvValue(process.env.RESEND_API_KEY);
+  const botKey = normaliseEnvValue(process.env.CALLMEBOT_APIKEY);
   const botPhone = normaliseWhatsAppNumber(process.env.CALLMEBOT_PHONE);
 
   return {
@@ -203,7 +209,7 @@ export function getNotificationConfig(): NotificationConfig {
             ownerEmail,
             supportEmail: supportEmail || undefined,
             emailFrom: emailFrom || undefined,
-            fromDomain: process.env.RESEND_FROM_DOMAIN,
+            fromDomain: normaliseEnvValue(process.env.RESEND_FROM_DOMAIN),
           }
         : null,
     whatsapp:
@@ -223,8 +229,46 @@ export function getNotificationConfig(): NotificationConfig {
  * Blob store is connected to the project.
  */
 export function getBlobConfig(): { token: string } | null {
-  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  const token = normaliseEnvValue(process.env.BLOB_READ_WRITE_TOKEN);
   return token ? { token } : null;
+}
+
+/**
+ * The config the **customer confirmation** email needs.
+ *
+ * Kept separate from `getNotificationConfig().email`, which additionally
+ * requires an owner or support address because the owner notification has to be
+ * addressed to someone. A confirmation is addressed to the customer and only
+ * needs a key and a usable `From`, so requiring an internal recipient here would
+ * silently disable confirmations on a deployment that had set the key but not
+ * `OWNER_EMAIL` — one of the ways this email could stop being sent with nothing
+ * in the logs to say so.
+ *
+ * Returns null when there is no key, which is the only true "not configured"
+ * state. The `From` address degrades to the verified support address rather than
+ * being a reason to skip.
+ */
+export type ConfirmationEmailConfig = {
+  apiKey: string;
+  supportEmail?: string;
+  emailFrom?: string;
+  fromDomain?: string;
+};
+
+export function getConfirmationEmailConfig(): ConfirmationEmailConfig | null {
+  const apiKey = normaliseEnvValue(process.env.RESEND_API_KEY);
+  if (!apiKey) return null;
+
+  const supportEmail = normaliseEnvValue(process.env.SUPPORT_EMAIL);
+  const emailFrom = normaliseEnvValue(process.env.EMAIL_FROM);
+  const fromDomain = normaliseEnvValue(process.env.RESEND_FROM_DOMAIN);
+
+  return {
+    apiKey,
+    supportEmail: supportEmail || undefined,
+    emailFrom: emailFrom || undefined,
+    fromDomain: fromDomain || undefined,
+  };
 }
 
 /**
