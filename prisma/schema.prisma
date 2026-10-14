@@ -9,35 +9,86 @@ datasource db {
   provider = "postgresql"
 }
 
-model contact_messages {
-  id        String        @id
-  fullName  String
-  email     String
-  phone     String?
-  message   String
-  status    MessageStatus @default(NEW)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  name             String?
+  role             UserRole         @default(STAFF)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  assignedTickets  JobTicket[]      @relation("TicketAssignee")
+  assignedRequests ServiceRequest[] @relation("RequestAssignee")
 
-  @@index([status, createdAt])
+  @@map("users")
 }
 
-model job_tickets {
-  id           String       @id
-  reference    String       @unique
-  title        String
-  description  String
-  status       TicketStatus @default(OPEN)
-  assignedToId String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime
-  users        users?       @relation(fields: [assignedToId], references: [id])
+model ServiceCategory {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  requests    ServiceRequest[]
 
-  @@index([status, createdAt])
+  @@index([isActive, sortOrder])
+  @@map("service_categories")
 }
 
-model portfolio_projects {
-  id            String            @id
+model ServiceRequest {
+  id            String                     @id @default(cuid())
+  reference     String                     @unique
+  fullName      String
+  email         String
+  phone         String
+  serviceId     String?
+  /// Populated when the visitor selects "Other" instead of a listed service.
+  serviceOther  String?
+  location      String
+  contactPref   PreferredContact           @default(PHONE)
+  description   String
+  status        RequestStatus              @default(NEW)
+  /// Internal only. Must never be returned by any public-facing query.
+  internalNotes String?
+  assignedToId  String?
+  /// URLs of the images the visitor uploaded to Vercel Blob, in the order they
+  /// were attached. A list rather than a relation: an image belongs to exactly
+  /// one request and is never read on its own, so a second table would only be
+  /// a join to manage. Empty for a request sent without photos.
+  imageUrls     String[]
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  attachments   ServiceRequestAttachment[]
+  assignedTo    User?                      @relation("RequestAssignee", fields: [assignedToId], references: [id])
+  service       ServiceCategory?           @relation(fields: [serviceId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([serviceId])
+  @@index([createdAt])
+  @@map("service_requests")
+}
+
+model ServiceRequestAttachment {
+  id           String         @id @default(cuid())
+  requestId    String
+  originalName String
+  storedName   String
+  storageKey   String
+  /// Detected from file signature bytes on the server, never from the client.
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime       @default(now())
+  request      ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("service_request_attachments")
+}
+
+model PortfolioProject {
+  id            String            @id @default(cuid())
   slug          String            @unique
   title         String
   summary       String
@@ -49,105 +100,51 @@ model portfolio_projects {
   coverImage    String
   images        String[]
   serviceSlug   String?
+  /// True while the entry is sample content. The UI labels these clearly and
+  /// they are removed as real projects are supplied.
   isPlaceholder Boolean           @default(true)
   visibility    ProjectVisibility @default(PUBLISHED)
   sortOrder     Int               @default(0)
   createdAt     DateTime          @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime          @updatedAt
 
-  @@index([category])
   @@index([visibility, sortOrder])
+  @@index([category])
+  @@map("portfolio_projects")
 }
 
-model service_categories {
-  id               String             @id
-  slug             String             @unique
-  name             String
-  description      String
-  isActive         Boolean            @default(true)
-  sortOrder        Int                @default(0)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  service_requests service_requests[]
+model ContactMessage {
+  id        String        @id @default(cuid())
+  fullName  String
+  email     String
+  phone     String?
+  message   String
+  status    MessageStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-  @@index([isActive, sortOrder])
-}
-
-model service_request_attachments {
-  id               String           @id
-  requestId        String
-  originalName     String
-  storedName       String
-  storageKey       String
-  mimeType         String
-  sizeBytes        Int
-  createdAt        DateTime         @default(now())
-  service_requests service_requests @relation(fields: [requestId], references: [id], onDelete: Cascade)
-
-  @@index([requestId])
-}
-
-model service_requests {
-  id                          String                        @id
-  reference                   String                        @unique
-  fullName                    String
-  email                       String
-  phone                       String
-  serviceId                   String?
-  serviceOther                String?
-  location                    String
-  contactPref                 PreferredContact              @default(PHONE)
-  description                 String
-  status                      RequestStatus                 @default(NEW)
-  internalNotes               String?
-  assignedToId                String?
-  createdAt                   DateTime                      @default(now())
-  updatedAt                   DateTime
-  service_request_attachments service_request_attachments[]
-  users                       users?                        @relation(fields: [assignedToId], references: [id])
-  service_categories          service_categories?           @relation(fields: [serviceId], references: [id])
-
-  @@index([createdAt])
-  @@index([serviceId])
   @@index([status, createdAt])
+  @@map("contact_messages")
 }
 
-model users {
-  id               String             @id
-  email            String             @unique
-  name             String?
-  role             UserRole           @default(STAFF)
-  isActive         Boolean            @default(true)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  job_tickets      job_tickets[]
-  service_requests service_requests[]
+model JobTicket {
+  id           String       @id @default(cuid())
+  reference    String       @unique
+  title        String
+  description  String
+  status       TicketStatus @default(OPEN)
+  assignedToId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  assignedTo   User?        @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  @@index([status, createdAt])
+  @@map("job_tickets")
 }
 
-enum MessageStatus {
-  NEW
-  READ
-  RESPONDED
-  ARCHIVED
-}
-
-enum PortfolioCategory {
-  SOFTWARE
-  NETWORKING
-  COMPUTER_SERVICES
-  GRAPHICS_DESIGN
-  OTHER
-}
-
-enum PreferredContact {
-  PHONE
-  WHATSAPP
-  EMAIL
-}
-
-enum ProjectVisibility {
-  DRAFT
-  PUBLISHED
+enum UserRole {
+  ADMIN
+  STAFF
 }
 
 enum RequestStatus {
@@ -159,6 +156,32 @@ enum RequestStatus {
   CANCELLED
 }
 
+enum PreferredContact {
+  PHONE
+  WHATSAPP
+  EMAIL
+}
+
+enum PortfolioCategory {
+  SOFTWARE
+  NETWORKING
+  COMPUTER_SERVICES
+  GRAPHICS_DESIGN
+  OTHER
+}
+
+enum ProjectVisibility {
+  DRAFT
+  PUBLISHED
+}
+
+enum MessageStatus {
+  NEW
+  READ
+  RESPONDED
+  ARCHIVED
+}
+
 enum TicketStatus {
   OPEN
   SCHEDULED
@@ -166,9 +189,4 @@ enum TicketStatus {
   AWAITING_PARTS
   RESOLVED
   CLOSED
-}
-
-enum UserRole {
-  ADMIN
-  STAFF
 }
