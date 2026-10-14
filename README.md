@@ -7,8 +7,11 @@ IT consultancy.
 
 > **Status: work in progress.** Phases 1–4 complete (architecture, database,
 > design system, homepage, services). Real business contact details are
-> configured. Portfolio projects remain placeholders pending real work from the
-> company. See [Outstanding placeholders](#outstanding-placeholders).
+> configured. The portfolio section is built but currently **hidden behind the
+> `SHOW_PORTFOLIO` feature flag**; its data remains placeholder pending real
+> work from the company. See
+> [Showing and hiding the portfolio](#showing-and-hiding-the-portfolio) and
+> [Outstanding placeholders](#outstanding-placeholders).
 
 ---
 
@@ -23,6 +26,7 @@ IT consultancy.
 - [Project structure](#project-structure)
 - [Brand assets](#brand-assets)
 - [Adding a service](#adding-a-service)
+- [Showing and hiding the portfolio](#showing-and-hiding-the-portfolio)
 - [Adding a portfolio project](#adding-a-portfolio-project)
 - [Database](#database)
 - [Deployment](#deployment)
@@ -504,6 +508,35 @@ which catches an accidental rename that would 404 existing inbound links.
 
 ---
 
+## Showing and hiding the portfolio
+
+The portfolio section is controlled by one flag in `src/lib/features.ts`:
+
+```ts
+export const SHOW_PORTFOLIO: boolean = false;
+```
+
+While it is `false`, the section is withheld from the live site but every
+component, query, data file and page remains in the codebase:
+
+- the `Portfolio` entry is dropped from the header (desktop and mobile) and the
+  footer, both of which render the shared `navigation` list;
+- the homepage preview and the "related work" block on service pages are not
+  rendered, and the pages read no database for them;
+- the sitemap omits `/portfolio` and every `/portfolio/{slug}` URL;
+- `/portfolio` and `/portfolio/[slug]` **301-redirect to `/services`**, and the
+  route guards call `notFound()` as a backstop.
+
+Setting the flag to `true` restores all of the above in one change — the
+`next.config.ts` redirects are driven by the same constant, so they disappear
+with it. Verify with `npm run build` and `npm test`; the sitemap tests cover
+both flag states.
+
+The rest of this section describes the portfolio as it exists when the flag is
+on.
+
+---
+
 ## Adding a portfolio project
 
 Projects are **database records**, not a content file, because they need
@@ -679,13 +712,12 @@ These are the items that must be resolved first — see
    `RESEND_FROM_DOMAIN` to fix that. The WhatsApp channel is unconfigured and
    also needs its one-time activation message sent from the owner's phone. See
    [Form notifications](#form-notifications).
-6. **Privacy policy.** Currently a clearly-marked draft that needs review
-   against your actual data handling. If either notification channel stays
-   enabled, it names the processors involved, so it must be kept accurate. Note
-   that `/privacy` is statically rendered and reads the environment at **build**
-   time, so enabling a channel is not enough on its own — the site must be
-   rebuilt before the policy starts naming that provider. Rebuilding is the same
-   step that deploys, so this applies naturally in production.
+6. **Privacy policy.** Published at `/privacy-policy`; the old `/privacy` path
+   issues a permanent redirect to it, so any indexed or bookmarked link lands on
+   the policy in force. The policy states the business's own contact details and
+   data practices, so it must be kept in step with what the site and its
+   processors actually do — review it whenever a notification channel, provider
+   or retention practice changes.
 
 ---
 
@@ -695,7 +727,7 @@ These are the items that must be resolved first — see
 
 | Route | What it does |
 |---|---|
-| `/sitemap.xml` | All 31 indexable URLs: 7 static, 6 services, 18 published projects |
+| `/sitemap.xml` | All 12 indexable URLs: 6 static and 6 services. The portfolio is hidden (see [Showing and hiding the portfolio](#showing-and-hiding-the-portfolio)) |
 | `/robots.txt` | Allows everything, points at the sitemap, skips `/request-service` and `/api/` |
 | `/opengraph-image` | 1200×630 PNG generated at build time from the brand tokens |
 
@@ -763,7 +795,7 @@ broke the chain.
 
 | Route | Before (raw) | After (raw) | Change |
 |---|---|---|---|
-| `/`, `/about`, `/services`, `/privacy` | 867–882 KB | 587–602 KB | **−280 KB (−50 KB gzipped)** |
+| `/`, `/about`, `/services`, `/privacy-policy` | 867–882 KB | 587–602 KB | **−280 KB (−50 KB gzipped)** |
 | `/contact` | 916 KB | 1,028 KB | +112 KB — see below |
 
 zod is now loaded only by `/contact` and `/request-service`, the two pages whose
@@ -872,7 +904,7 @@ hours.
 
 | Placeholder | Where it appears | Needed |
 |---|---|---|
-| Portfolio projects | `/portfolio`, `/portfolio/{slug}`, service pages | Real projects with photography. 18 sample entries are live, each badged "Placeholder" |
+| Portfolio projects | Hidden by `SHOW_PORTFOLIO`; would appear at `/portfolio`, `/portfolio/{slug}` and service pages | Real projects with photography. 18 sample entries exist, each marked "Placeholder", and are not published while the flag is off |
 | Legal entity name | Privacy policy | Registered name, if it should appear |
 | Notification destination | Form submissions | Which address `OWNER_EMAIL` should be, and whether to keep the WhatsApp channel |
 | Service area | Structured data only | Which areas are covered — deliberately **not** inferred from the office address, and omitted until confirmed |

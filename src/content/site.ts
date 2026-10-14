@@ -1,4 +1,5 @@
 import { isPlaceholder } from "@/lib/placeholder";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 
 /**
  * Single source of truth for brand, navigation and business contact details.
@@ -89,9 +90,11 @@ export const navigation = [
   { label: "Home", href: "/" },
   { label: "About", href: "/about" },
   { label: "Services", href: "/services" },
-  { label: "Portfolio", href: "/portfolio" },
+  // Gated by the feature flag rather than deleted, so the header, the mobile
+  // drawer and the footer all regain the entry together when it is turned on.
+  ...(SHOW_PORTFOLIO ? [{ label: "Portfolio", href: "/portfolio" }] : []),
   { label: "Contact", href: "/contact" },
-] as const;
+];
 
 /**
  * The workflow every service follows. Defined once and rendered on the About

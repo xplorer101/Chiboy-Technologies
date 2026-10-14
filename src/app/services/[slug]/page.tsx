@@ -20,6 +20,7 @@ import {
   workflowSteps,
 } from "@/content/site";
 import { getProjectsBySlugs, type PortfolioCard } from "@/lib/portfolio";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 
 /**
  * Service detail page.
@@ -30,8 +31,8 @@ import { getProjectsBySlugs, type PortfolioCard } from "@/lib/portfolio";
  * automatically, with no new route file and no duplicated markup.
  *
  * Structure follows the specification: title and intro, the problems it
- * solves, what is included, the six-step workflow, related portfolio, FAQ, and
- * a closing call to action.
+ * solves, what is included, the six-step workflow, related work (while the
+ * portfolio is shown), FAQ, and a closing call to action.
  */
 
 /**
@@ -97,10 +98,11 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   // Resolved by slug from the content file. Returns an empty list — rather than
   // failing the page — if the database is unavailable, so a service page is
-  // never taken offline by a database problem.
-  const relatedProjects: PortfolioCard[] = await getProjectsBySlugs(
-    service.relatedProjectSlugs,
-  );
+  // never taken offline by a database problem. While the portfolio is hidden
+  // the query is skipped entirely and the section does not render.
+  const relatedProjects: PortfolioCard[] = SHOW_PORTFOLIO
+    ? await getProjectsBySlugs(service.relatedProjectSlugs)
+    : [];
 
   // Everything except the current service, so a visitor who picked the wrong
   // page can self-serve instead of going back to the overview.
@@ -234,7 +236,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
       <WorkflowSection steps={workflowSteps} id="workflow-heading" tone="white" />
 
       {/* ---- Related portfolio ---- */}
-      {relatedProjects.length > 0 ? (
+      {SHOW_PORTFOLIO && relatedProjects.length > 0 ? (
         <Section tone="muted" labelledBy="related-projects-heading" size="compact">
           <Container>
             <SectionHeading

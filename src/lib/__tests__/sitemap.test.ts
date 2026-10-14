@@ -23,6 +23,9 @@ function input(overrides: Partial<SitemapInput> = {}): SitemapInput {
     baseUrl: base,
     serviceSlugs: ["networking", "graphics-design"],
     projects: [{ slug: "network-refresh", updatedAt: new Date("2026-01-15T00:00:00Z") }],
+    // The portfolio rules are exercised here while the section is hidden behind
+    // the feature flag; the default-off behaviour is covered separately below.
+    includePortfolio: true,
     ...overrides,
   };
 }
@@ -39,7 +42,7 @@ describe("buildSitemap", () => {
         "/portfolio",
         "/contact",
         "/request-service",
-        "/privacy",
+        "/privacy-policy",
       ]),
     );
   });
@@ -125,7 +128,7 @@ describe("buildSitemap", () => {
     // A "last modified = now" on untouched pages teaches crawlers that
     // `lastmod` is noise, which costs the signal its value on real edits.
     for (const entry of buildSitemap(input())) {
-      if (new URL(entry.url).pathname === "/privacy") {
+      if (new URL(entry.url).pathname === "/privacy-policy") {
         expect(entry.lastModified).toBeUndefined();
       }
     }
@@ -141,6 +144,27 @@ describe("buildSitemap", () => {
   it("still returns the static routes when there is no data at all", () => {
     const p = paths(input({ serviceSlugs: [], projects: [] }));
     expect(p).toContain("/");
-    expect(p).toContain("/privacy");
+    expect(p).toContain("/privacy-policy");
+  });
+
+  it("omits the portfolio and its projects when the feature is off", () => {
+    const p = paths(input({ includePortfolio: false }));
+    expect(p).not.toContain("/portfolio");
+    expect(p.some((path) => path.startsWith("/portfolio"))).toBe(false);
+    // The rest of the site is unaffected.
+    expect(p).toContain("/services");
+    expect(p).toContain("/services/networking");
+  });
+
+  it("follows the SHOW_PORTFOLIO flag when no override is given", () => {
+    // Built without `includePortfolio`, exactly as the live route does it.
+    const p = paths({
+      baseUrl: base,
+      serviceSlugs: ["networking"],
+      projects: [{ slug: "network-refresh" }],
+    });
+    // SHOW_PORTFOLIO is false, so the portfolio must not appear.
+    expect(p).not.toContain("/portfolio");
+    expect(p.some((path) => path.startsWith("/portfolio"))).toBe(false);
   });
 });

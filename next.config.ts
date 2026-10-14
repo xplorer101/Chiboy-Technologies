@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { SHOW_PORTFOLIO } from "./src/lib/features";
+
 const isDev = process.env.NODE_ENV === "development";
 
 /**
@@ -79,6 +81,30 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+
+  /**
+   * The privacy policy used to live at `/privacy` as an unfinished draft. The
+   * canonical policy is now `/privacy-policy`, so the old path is redirected
+   * permanently rather than left to 404 or to serve stale, placeholder text.
+   * A permanent redirect (308) is what moves any accumulated search signal and
+   * any bookmarked or shared link on to the current page.
+   *
+   * While the portfolio section is hidden, its old URLs go to the services
+   * overview with a 301 rather than a 404, for the same reason. Both rules are
+   * driven by the one `SHOW_PORTFOLIO` flag, so restoring the section removes
+   * the portfolio redirect with no separate edit here.
+   */
+  async redirects() {
+    return [
+      { source: "/privacy", destination: "/privacy-policy", permanent: true },
+      ...(SHOW_PORTFOLIO
+        ? []
+        : [
+            { source: "/portfolio", destination: "/services", statusCode: 301 },
+            { source: "/portfolio/:slug", destination: "/services", statusCode: 301 },
+          ]),
+    ];
   },
 
   images: {

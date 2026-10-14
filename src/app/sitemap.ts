@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { services } from "@/content/services";
 import { getPublishedProjectTimestamps } from "@/lib/portfolio";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 import { buildSitemap } from "@/lib/sitemap";
 
 /**
@@ -24,7 +25,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries = buildSitemap({
     baseUrl: siteUrl,
     serviceSlugs: services.map((service) => service.slug),
-    projects: await getPublishedProjectTimestamps(),
+    // Skipped entirely while the portfolio is hidden, so the sitemap neither
+    // lists the section nor reads the database for it.
+    projects: SHOW_PORTFOLIO ? await getPublishedProjectTimestamps() : [],
   });
 
   return entries;

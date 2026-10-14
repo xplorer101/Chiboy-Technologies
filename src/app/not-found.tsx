@@ -4,6 +4,7 @@ import { ArrowRight, Compass, Home, LifeBuoy, Wrench } from "lucide-react";
 import { Container } from "@/components/ui/Layout";
 import { ButtonLink } from "@/components/ui/Button";
 import { services } from "@/content/services";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 
 /**
  * Not found page.
@@ -121,10 +122,16 @@ const suggestions = [
     body: "Tell us what you need and we will come back to you with next steps.",
     icon: LifeBuoy,
   },
-  {
-    href: "/portfolio",
-    label: "Portfolio",
-    body: "Examples of the kind of work we carry out.",
-    icon: Compass,
-  },
+  // Reduced to nothing while the portfolio is hidden, rather than deleted, so
+  // the 404 page offers it again the moment the section returns.
+  ...(SHOW_PORTFOLIO
+    ? [
+        {
+          href: "/portfolio",
+          label: "Portfolio",
+          body: "Examples of the kind of work we carry out.",
+          icon: Compass,
+        },
+      ]
+    : []),
 ] as const;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowRight, FolderOpen } from "lucide-react";
 
 import { Container, Section, SectionHeading } from "@/components/ui/Layout";
@@ -9,6 +10,7 @@ import { ProjectCard } from "@/components/portfolio/ProjectCard";
 import { CtaBand } from "@/components/layout/Footer";
 
 import { cn } from "@/lib/utils/cn";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 
 import { site } from "@/content/site";
 import {
@@ -89,6 +91,12 @@ export default async function PortfolioPage({
 }: {
   searchParams: SearchParams;
 }) {
+  // With the section hidden the route does not render at all; in normal use the
+  // `next.config.ts` redirect answers the URL before it reaches here. This
+  // guard is the belt to that braces, so a request that slips past the redirect
+  // still cannot render a hidden page.
+  if (!SHOW_PORTFOLIO) notFound();
+
   // Awaiting `searchParams` is what makes this route dynamic. From here on the
   // rest of the page is an ordinary server render.
   const params = await searchParams;

@@ -6,6 +6,8 @@
  * data; this module decides what belongs in the sitemap and with what weight.
  */
 
+import { SHOW_PORTFOLIO } from "@/lib/features";
+
 export type SitemapChangeFrequency =
   | "always"
   | "hourly"
@@ -38,11 +40,21 @@ const STATIC_ROUTES: ReadonlyArray<{
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/services", changeFrequency: "monthly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/portfolio", changeFrequency: "weekly", priority: 0.8 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.8 },
   { path: "/request-service", changeFrequency: "monthly", priority: 0.9 },
-  { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/privacy-policy", changeFrequency: "yearly", priority: 0.3 },
 ] as const;
+
+/**
+ * The portfolio is appended separately, behind `SHOW_PORTFOLIO`. It is not in
+ * `STATIC_ROUTES` because it is the one route that is conditional on a feature
+ * flag rather than always present.
+ */
+const PORTFOLIO_ROUTE = {
+  path: "/portfolio",
+  changeFrequency: "weekly",
+  priority: 0.8,
+} as const;
 
 export type SitemapInput = {
   /** Site origin, e.g. `https://chiboytechnologies.com`. */
@@ -51,6 +63,13 @@ export type SitemapInput = {
   serviceSlugs: readonly string[];
   /** Published portfolio projects. */
   projects: readonly { slug: string; updatedAt?: Date | null }[];
+  /**
+   * Whether the portfolio belongs in the sitemap. Defaults to the
+   * `SHOW_PORTFOLIO` feature flag, so the live sitemap follows the flag with no
+   * extra wiring; tests pass `true` to exercise the portfolio rules while the
+   * section is hidden.
+   */
+  includePortfolio?: boolean;
 };
 
 /**
@@ -91,8 +110,14 @@ export function buildSitemap(input: SitemapInput): SitemapEntry[] {
     entries.push(entry);
   };
 
+  const includePortfolio = input.includePortfolio ?? SHOW_PORTFOLIO;
+
   for (const route of STATIC_ROUTES) {
     push(route.path, route.changeFrequency, route.priority);
+  }
+
+  if (includePortfolio) {
+    push(PORTFOLIO_ROUTE.path, PORTFOLIO_ROUTE.changeFrequency, PORTFOLIO_ROUTE.priority);
   }
 
   for (const slug of input.serviceSlugs) {
@@ -100,16 +125,18 @@ export function buildSitemap(input: SitemapInput): SitemapEntry[] {
     push(`/services/${slug}`, "monthly", 0.8);
   }
 
-  for (const project of input.projects) {
-    if (!isSafeSegment(project.slug)) continue;
-    add({
-      url: absoluteUrl(input.baseUrl, `/portfolio/${project.slug}`),
-      // A project's own edit time is a real signal. Projects without one
-      // (a database that predates the column, or a stub) simply omit it.
-      ...(project.updatedAt ? { lastModified: project.updatedAt } : {}),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    });
+  if (includePortfolio) {
+    for (const project of input.projects) {
+      if (!isSafeSegment(project.slug)) continue;
+      add({
+        url: absoluteUrl(input.baseUrl, `/portfolio/${project.slug}`),
+        // A project's own edit time is a real signal. Projects without one
+        // (a database that predates the column, or a stub) simply omit it.
+        ...(project.updatedAt ? { lastModified: project.updatedAt } : {}),
+        changeFrequency: "monthly",
+        priority: 0.6,
+      });
+    }
   }
 
   return entries;

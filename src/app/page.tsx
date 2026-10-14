@@ -7,16 +7,17 @@ import {
 } from "@/components/sections/HomeSections";
 import { CtaBand } from "@/components/layout/Footer";
 import { getPublishedProjects } from "@/lib/portfolio";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 import { getServiceArea, site } from "@/content/site";
 import { services } from "@/content/services";
 
 /**
  * Homepage.
  *
- * Rendered at request time rather than fully static because it queries the
- * portfolio. The `revalidate` window means it is still served from cache and
- * regenerated in the background, so it stays fast while a newly added project
- * appears without a redeploy.
+ * The portfolio preview is gated behind `SHOW_PORTFOLIO`. While it is off the
+ * page reads no database and is served from the prerender; when it is on the
+ * page is rendered at request time with a revalidation window, so a newly added
+ * project appears without a redeploy.
  */
 
 export const metadata: Metadata = {
@@ -34,9 +35,9 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  // Three preview cards is enough to establish that work is shown without
-  // turning the homepage into a second portfolio page.
-  const projects = await getPublishedProjects(3);
+  // Read only while the section is shown. The flag is a constant, so when it is
+  // off this is an empty list and the page touches no database at all.
+  const projects = SHOW_PORTFOLIO ? await getPublishedProjects(3) : [];
   const serviceArea = getServiceArea();
 
   return (
@@ -44,7 +45,7 @@ export default async function HomePage() {
       <Hero />
       <TrustSection />
       <ServicesPreview />
-      <PortfolioPreview projects={projects} />
+      {SHOW_PORTFOLIO ? <PortfolioPreview projects={projects} /> : null}
 
       {/* Service names in structured data, derived from the same source as the
           visible cards so the two can never disagree. */}

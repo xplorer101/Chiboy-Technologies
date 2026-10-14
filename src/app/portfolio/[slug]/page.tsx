@@ -14,6 +14,7 @@ import { getService } from "@/content/services";
 import { getWhatsAppLink, site } from "@/content/site";
 import { categoryLabel } from "@/lib/portfolio-categories";
 import { buildProjectJsonLd } from "@/lib/portfolio-jsonld";
+import { SHOW_PORTFOLIO } from "@/lib/features";
 import {
   getPublishedProject,
   getPublishedProjectSlugs,
@@ -53,6 +54,10 @@ type PageProps = { params: Promise<{ slug: string }> };
  * generated on first request.
  */
 export async function generateStaticParams() {
+  // When the section is hidden nothing is prerendered and no database read is
+  // attempted; the redirect in `next.config.ts` handles the URL instead.
+  if (!SHOW_PORTFOLIO) return [];
+
   const slugs = await getPublishedProjectSlugs();
   return slugs.map((slug) => ({ slug }));
 }
@@ -96,6 +101,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ProjectPage({ params }: PageProps) {
+  // See the matching guard on the index page: the redirect answers first, and
+  // this makes the hidden state authoritative even without it.
+  if (!SHOW_PORTFOLIO) notFound();
+
   const { slug } = await params;
   const project = await getPublishedProject(slug);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -308,6 +309,17 @@ export function ServiceRequestForm({
         </Button>
         <p className="text-sm text-charcoal-600">You will get a reference to quote.</p>
       </div>
+
+      <p className="text-sm leading-relaxed text-charcoal-600">
+        By sending this request you agree to our{" "}
+        <Link
+          href="/privacy-policy"
+          className="text-navy-800 underline decoration-charcoal-300 underline-offset-2 transition-colors hover:text-navy-600 hover:decoration-navy-400"
+        >
+          Privacy Policy
+        </Link>
+        , which explains how we use the information you provide.
+      </p>
     </form>
   );
 }
