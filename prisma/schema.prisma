@@ -54,6 +54,11 @@ model ServiceRequest {
   /// Internal only. Must never be returned by any public-facing query.
   internalNotes String?
   assignedToId  String?
+  /// URLs of the images the visitor uploaded to Vercel Blob, in the order they
+  /// were attached. A list rather than a relation: an image belongs to exactly
+  /// one request and is never read on its own, so a second table would only be
+  /// a join to manage. Empty for a request sent without photos.
+  imageUrls     String[]
   createdAt     DateTime                   @default(now())
   updatedAt     DateTime                   @updatedAt
   attachments   ServiceRequestAttachment[]

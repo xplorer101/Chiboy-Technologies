@@ -11,11 +11,11 @@ import { FormErrorSummary } from "@/components/ui/ErrorSummary";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import {
   FieldGrid,
-  FileInputField,
   HoneypotField,
+  ImageUploadField,
   RadioGroup,
   ResultRegion,
-  type FileInputHandle,
+  type ImageUploadHandle,
 } from "@/components/forms/parts";
 import { buildFormData } from "@/lib/utils/form-data";
 import { cn } from "@/lib/utils/cn";
@@ -73,6 +73,7 @@ const FIELD_LABELS: Record<string, string> = {
   location: "Location",
   contactPref: "Preferred contact method",
   description: "Description",
+  imageUrls: "Photos",
   _form: "This form",
 };
 
@@ -128,7 +129,7 @@ export function ServiceRequestForm({
   preselectedService?: string | undefined;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const fileInputRef = useRef<FileInputHandle>(null);
+  const imageInputRef = useRef<ImageUploadHandle>(null);
   const [result, setResult] = useState<Result>({ status: "idle" });
 
   const form = useForm<ServiceRequestInput, unknown, ServiceRequestValues>({
@@ -164,17 +165,25 @@ export function ServiceRequestForm({
     const data = buildFormData({
       values,
       honeypot,
-      files: fileInputRef.current?.getFiles() ?? null,
+      // Images never reach this action: they were uploaded to Blob when they
+      // were chosen, so only their URLs are submitted. That keeps the request
+      // body well under the ~4.5 MB Server Action limit that would otherwise
+      // swallow a few phone photos whole.
+      files: null,
     });
+
+    for (const url of imageInputRef.current?.getUrls() ?? []) {
+      data.append("imageUrls", url);
+    }
 
     const response = await submitServiceRequest(data);
 
     if (response.status === "success") {
       reset({ ...EMPTY, serviceId: preselectedService ?? "" });
-      // The picker clears itself: the DOM value and the visible list are two
-      // different pieces of state, and a second submission must not quietly
-      // re-send files the visitor chose once.
-      fileInputRef.current?.reset();
+      // The picker clears itself, so the URL list and the visible list are
+      // reset together — a second submission must not quietly re-send images
+      // the visitor chose once.
+      imageInputRef.current?.reset();
       setResult({
         status: "success",
         message: response.message,
@@ -319,14 +328,13 @@ export function ServiceRequestForm({
           {...register("description")}
         />
 
-        <FileInputField
-          id="attachments"
-          ref={fileInputRef}
-          label="Photos or documents"
+        <ImageUploadField
+          id="images"
+          ref={imageInputRef}
+          label="Photos"
           maxFiles={maxFiles}
-          maxMb={maxMb}
           accept={accept}
-          hint={`Up to ${maxFiles} files, ${maxMb} MB each. Screenshots of the problem are usually more useful than a written description.`}
+          hint={`Up to ${maxFiles} photos, ${maxMb} MB each. Screenshots of the problem are usually more useful than a written description.`}
         />
       </fieldset>
 

@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   contactPreferenceLabel,
+  customerConfirmationEmailHtml,
+  customerConfirmationEmailText,
+  resolveFromAddress,
+  resolveSupportEmail,
   resendFromAddress,
   RESEND_ONBOARDING_ADDRESS,
   serviceRequestEmailBody,
+  serviceRequestEmailHtml,
   serviceRequestEmailSubject,
   serviceRequestWhatsAppText,
+  SUPPORT_EMAIL_ADDRESS,
   toSingleLine,
   truncate,
   type NewServiceRequest,
@@ -246,6 +252,176 @@ describe("serviceRequestWhatsAppText", () => {
       description: "First paragraph.\n\nSecond paragraph.",
     });
     expect(multi).toContain("First paragraph. Second paragraph.");
+  });
+});
+
+describe("resolveSupportEmail", () => {
+  it("uses the configured address when there is one", () => {
+    expect(resolveSupportEmail("help@chiboytechnologies.com")).toBe(
+      "help@chiboytechnologies.com",
+    );
+  });
+
+  it("falls back to the business support address when unset", () => {
+    // The requirement: a reply must never be lost because the variable was not
+    // set. Unset, empty and whitespace all resolve to the same address.
+    expect(resolveSupportEmail(undefined)).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(resolveSupportEmail("")).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(resolveSupportEmail("   ")).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(SUPPORT_EMAIL_ADDRESS).toBe("support@chiboytechnologies.com");
+  });
+
+  it("falls back rather than emitting a malformed address", () => {
+    expect(resolveSupportEmail("not an address")).toBe(SUPPORT_EMAIL_ADDRESS);
+    expect(resolveSupportEmail("two@@example.com")).toBe(SUPPORT_EMAIL_ADDRESS);
+  });
+
+  it("trims padding rather than rejecting a value an env file left a newline on", () => {
+    expect(resolveSupportEmail("  support@chiboytechnologies.com\n")).toBe(
+      "support@chiboytechnologies.com",
+    );
+  });
+});
+
+describe("resolveFromAddress", () => {
+  it("uses EMAIL_FROM verbatim when it is a complete, safe header", () => {
+    // The whole reason EMAIL_FROM exists: it is the only input that can carry
+    // the display name, so it must not be re-composed from the domain.
+    expect(
+      resolveFromAddress(
+        "Chiboy Technologies <noreply@chiboytechnologies.com>",
+        "chiboytechnologies.com",
+      ),
+    ).toBe("Chiboy Technologies <noreply@chiboytechnologies.com>");
+  });
+
+  it("accepts a bare address", () => {
+    expect(resolveFromAddress("noreply@chiboytechnologies.com", undefined)).toBe(
+      "noreply@chiboytechnologies.com",
+    );
+  });
+
+  it("rejects header injection rather than passing it through", () => {
+    // A CRLF here is the character that turns one header into two. Falling back
+    // is the safe direction: the send still happens, from the domain address.
+    const injected = "noreply@chiboytechnologies.com\r\nBcc: attacker@example.com";
+    expect(resolveFromAddress(injected, "chiboytechnologies.com")).toBe(
+      "CHIBOY TECHNOLOGIES <notifications@chiboytechnologies.com>",
+    );
+    expect(resolveFromAddress("no address here", "chiboytechnologies.com")).toBe(
+      "CHIBOY TECHNOLOGIES <notifications@chiboytechnologies.com>",
+    );
+  });
+
+  it("composes from the domain when EMAIL_FROM is unset", () => {
+    expect(resolveFromAddress(undefined, "chiboytechnologies.com")).toBe(
+      "CHIBOY TECHNOLOGIES <notifications@chiboytechnologies.com>",
+    );
+  });
+
+  it("falls back to the onboarding address when neither is usable", () => {
+    expect(resolveFromAddress(undefined, undefined)).toBe(
+      `CHIBOY TECHNOLOGIES <${RESEND_ONBOARDING_ADDRESS}>`,
+    );
+  });
+});
+
+describe("serviceRequestEmailBody with images", () => {
+  const imageUrls = [
+    "https://store.public.blob.vercel-storage.com/service-requests/a1.jpg",
+    "https://store.public.blob.vercel-storage.com/service-requests/b2.png",
+  ];
+
+  it("lists each image URL so the owner can open it", () => {
+    const body = serviceRequestEmailBody({ ...request, attachmentCount: 2, imageUrls });
+
+    for (const url of imageUrls) expect(body).toContain(url);
+  });
+
+  it("omits the image section entirely when there are none", () => {
+    // An orphaned "Images" heading with nothing under it reads as a rendering
+    // bug. The "Attachments: none" line already says the same thing.
+    const body = serviceRequestEmailBody({ ...request, attachmentCount: 0, imageUrls: [] });
+    expect(body).not.toContain("Images\n------");
+  });
+
+  it("keeps the plain-text attachment count unchanged", () => {
+    // The count line predates the image list and existing inbox filters may rely
+    // on it; the URLs are added, not substituted.
+    expect(serviceRequestEmailBody({ ...request, attachmentCount: 2, imageUrls })).toContain(
+      "Attachments: 2 files",
+    );
+  });
+});
+
+describe("serviceRequestEmailHtml", () => {
+  it("makes every image a clickable link", () => {
+    const url = "https://store.public.blob.vercel-storage.com/service-requests/a1.jpg";
+    const html = serviceRequestEmailHtml({ ...request, attachmentCount: 1, imageUrls: [url] });
+
+    expect(html).toContain(`<a href="${url}">${url}</a>`);
+  });
+
+  it("says None rather than leaving an empty list when there are no images", () => {
+    expect(serviceRequestEmailHtml({ ...request, attachmentCount: 0 })).toContain("None.");
+  });
+
+  it("escapes the description, because it comes from a public form", () => {
+    const html = serviceRequestEmailHtml({
+      ...request,
+      description: '<script>alert("x")</script>',
+    });
+
+    expect(html).not.toContain("<script>alert");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("escapes the name and service too", () => {
+    const html = serviceRequestEmailHtml({
+      ...request,
+      name: "<img src=x onerror=alert(1)>",
+      service: "Networking & <b>more</b>",
+    });
+
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain("&amp;");
+  });
+});
+
+describe("customer confirmation address and image mention", () => {
+  it("shows the support address in the HTML body", () => {
+    const html = customerConfirmationEmailHtml(request);
+
+    expect(html).toContain(SUPPORT_EMAIL_ADDRESS);
+    // The old hard-coded gmail address must be gone from the template.
+    expect(html).not.toContain("chiboytechnologies@gmail.com");
+  });
+
+  it("shows the support address in the text body", () => {
+    const text = customerConfirmationEmailText(request);
+
+    expect(text).toContain(SUPPORT_EMAIL_ADDRESS);
+    expect(text).not.toContain("chiboytechnologies@gmail.com");
+  });
+
+  it("uses a configured support address instead of the default", () => {
+    const text = customerConfirmationEmailText(request, "help@chiboytechnologies.com");
+    expect(text).toContain("help@chiboytechnologies.com");
+  });
+
+  it("mentions how many images were received, and only when some were", () => {
+    const withOne = customerConfirmationEmailText({ ...request, attachmentCount: 1 });
+    const withTwo = customerConfirmationEmailText({ ...request, attachmentCount: 2 });
+    const withNone = customerConfirmationEmailText({ ...request, attachmentCount: 0 });
+
+    expect(withOne).toContain("the image you attached");
+    expect(withTwo).toContain("the 2 images you attached");
+    expect(withNone).not.toContain("you attached");
+  });
+
+  it("mentions the images in the HTML body as well", () => {
+    const html = customerConfirmationEmailHtml({ ...request, attachmentCount: 2 });
+    expect(html).toContain("the 2 images you attached");
   });
 });
 

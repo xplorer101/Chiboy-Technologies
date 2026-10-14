@@ -3,8 +3,10 @@ import "server-only";
 import { Resend } from "resend";
 
 import {
-  resendFromAddress,
+  resolveFromAddress,
+  resolveSupportEmail,
   serviceRequestEmailBody,
+  serviceRequestEmailHtml,
   serviceRequestEmailSubject,
   customerConfirmationEmailHtml,
   customerConfirmationEmailText,
@@ -24,18 +26,21 @@ import {
  * dependency tree that has to be kept current. It is verified as contributing no
  * known advisories.
  *
- * WHY THE BODY IS PLAIN TEXT
- * --------------------------
- * Every value in it came from a public form. In an HTML body that is an
- * injection surface requiring escaping; there is no markup in a plain-text body,
- * so the problem does not exist. See the note in `template.ts`.
+ * WHY THE BODY IS PLAIN TEXT, WITH AN HTML ALTERNATIVE
+ * ----------------------------------------------------
+ * The text part is authoritative, and every value in it came from a public
+ * form. The HTML part exists only so the links to the visitor's images are
+ * clickable in clients that do not linkify plain text; it carries the same
+ * values, escaped. See the note in `template.ts`.
  *
  * WHY `replyTo` IS SET
  * --------------------
- * The most likely next action is a reply to the person who asked. Setting
- * `replyTo` to their address means the owner can just hit reply, instead of
- * copying an address out of the body — which is also the most likely place for a
- * typo to turn into a lost enquiry.
+ * On the owner notification, setting `replyTo` to the visitor's address means
+ * the most likely next action — replying to the person who asked — is one
+ * keystroke, instead of copying an address out of the body, which is also the
+ * most likely place for a typo to turn into a lost enquiry. On the customer
+ * confirmation it is the support address instead, so a reply from the customer
+ * reaches the support inbox rather than a no-reply sender.
  *
  * WHY THIS CALL IS BOUNDED BY A RACE AND NOT BY AN ABORT
  * -------------------------------------------------------
@@ -59,21 +64,32 @@ export type NotificationResult =
 
 export async function sendServiceRequestEmail(
   request: NewServiceRequest,
-  config: { apiKey: string; ownerEmail: string; fromDomain?: string },
+  config: {
+    apiKey: string;
+    ownerEmail: string;
+    supportEmail?: string | undefined;
+    emailFrom?: string | undefined;
+    fromDomain?: string | undefined;
+  },
 ): Promise<NotificationResult> {
   const resend = new Resend(config.apiKey);
-  const fromAddress = `CHIBOY TECHNOLOGIES <${resendFromAddress(config.fromDomain)}>`;
+  const fromAddress = resolveFromAddress(config.emailFrom, config.fromDomain);
+  // The internal notification goes to the support inbox. When `SUPPORT_EMAIL`
+  // is unset it falls back to the support address rather than to the owner
+  // address, so configuring only `OWNER_EMAIL` still delivers.
+  const toAddress = resolveSupportEmail(config.supportEmail);
 
-  console.log(`[notify:email] Attempting to send to ${config.ownerEmail} from ${fromAddress} (reference: ${request.reference})`);
+  console.log(`[notify:email] Attempting to send to ${toAddress} from ${fromAddress} (reference: ${request.reference})`);
 
   try {
     const send = resend.emails.send(
       {
         from: fromAddress,
-        to: [config.ownerEmail],
+        to: [toAddress],
         replyTo: request.email,
         subject: serviceRequestEmailSubject(request.service),
         text: serviceRequestEmailBody(request),
+        html: serviceRequestEmailHtml(request),
       },
       {
         idempotencyKey: request.reference,
@@ -166,19 +182,28 @@ function describe(error: unknown): string {
  * here must not affect the visitor's success response. Errors are logged but
  * never thrown.
  *
- * Uses the same Resend config (API key, from domain) as the owner notification.
+ * Uses the same Resend config (API key, from address) as the owner notification.
  * The `from` address is the same verified-domain address so the customer sees
- * a consistent sender identity.
+ * a consistent sender identity, and `replyTo` points at the support inbox.
  */
 export async function sendCustomerConfirmationEmail(
   request: NewServiceRequest,
-  config: { apiKey: string; ownerEmail: string; fromDomain?: string },
+  config: {
+    apiKey: string;
+    ownerEmail: string;
+    supportEmail?: string | undefined;
+    emailFrom?: string | undefined;
+    fromDomain?: string | undefined;
+  },
 ): Promise<NotificationResult> {
   const resend = new Resend(config.apiKey);
-  const fromAddress = `CHIBOY TECHNOLOGIES <${resendFromAddress(config.fromDomain)}>`;
+  const fromAddress = resolveFromAddress(config.emailFrom, config.fromDomain);
+  // A reply goes to support rather than to the no-reply sender the message came
+  // from, so a customer who hits reply is answered instead of silently dropped.
+  const replyTo = resolveSupportEmail(config.supportEmail);
   const subject = customerConfirmationEmailSubject(request.reference);
-  const html = customerConfirmationEmailHtml(request);
-  const text = customerConfirmationEmailText(request);
+  const html = customerConfirmationEmailHtml(request, replyTo);
+  const text = customerConfirmationEmailText(request, replyTo);
 
   console.log(`[notify:email:customer] Attempting to send confirmation to ${request.email} from ${fromAddress} (reference: ${request.reference})`);
 
@@ -187,6 +212,7 @@ export async function sendCustomerConfirmationEmail(
       {
         from: fromAddress,
         to: [request.email],
+        replyTo,
         subject,
         html,
         text,

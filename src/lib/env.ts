@@ -55,6 +55,27 @@ const serverEnvSchema = z.object({
   RESEND_FROM_DOMAIN: z.string().optional().or(z.literal("")),
 
   /**
+   * The full `From` header, e.g. `Chiboy Technologies <noreply@chiboytechnologies.com>`.
+   *
+   * Takes precedence over `RESEND_FROM_DOMAIN` so the display name can be set to
+   * whatever the business uses. Left optional: when it is absent the address is
+   * composed from the domain, and when neither is usable the onboarding address
+   * is used, so a missing value degrades rather than breaking every send.
+   */
+  EMAIL_FROM: z.string().optional().or(z.literal("")),
+
+  /**
+   * The address customers are told to contact, and the reply-to on the
+   * confirmation email. Falls back to the business support address in the
+   * notification module when unset, so replies are never lost.
+   */
+  SUPPORT_EMAIL: z
+    .string()
+    .email("SUPPORT_EMAIL must be a valid email address")
+    .optional()
+    .or(z.literal("")),
+
+  /**
    * The owner's WhatsApp number, in display form.
    *
    * Validated as a plausible international number, and normalised to bare digits
@@ -86,6 +107,8 @@ export function getServerEnv(): ServerEnv {
     OWNER_EMAIL: process.env.OWNER_EMAIL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_DOMAIN: process.env.RESEND_FROM_DOMAIN,
+    EMAIL_FROM: process.env.EMAIL_FROM,
+    SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
     CALLMEBOT_PHONE: process.env.CALLMEBOT_PHONE,
     CALLMEBOT_APIKEY: process.env.CALLMEBOT_APIKEY,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
@@ -138,12 +161,22 @@ export function getRateLimitConfig(): { url: string; token: string } | null {
  * consequence of "the database is not configured".
  */
 export type NotificationConfig = {
-  email: { apiKey: string; ownerEmail: string; fromDomain?: string } | null;
+  email: {
+    apiKey: string;
+    ownerEmail: string;
+    /** Where the internal notification is delivered. Optional; falls back in `template.ts`. */
+    supportEmail?: string;
+    /** Full `From` header, e.g. `Chiboy Technologies <noreply@chiboytechnologies.com>`. */
+    emailFrom?: string;
+    fromDomain?: string;
+  } | null;
   whatsapp: { apiKey: string; phone: string } | null;
 };
 
 export function getNotificationConfig(): NotificationConfig {
   const ownerEmail = process.env.OWNER_EMAIL?.trim() ?? "";
+  const supportEmail = process.env.SUPPORT_EMAIL?.trim() ?? "";
+  const emailFrom = process.env.EMAIL_FROM?.trim() ?? "";
   const resendKey = process.env.RESEND_API_KEY?.trim() ?? "";
   const botKey = process.env.CALLMEBOT_APIKEY?.trim() ?? "";
   const botPhone = normaliseWhatsAppNumber(process.env.CALLMEBOT_PHONE);
@@ -152,21 +185,46 @@ export function getNotificationConfig(): NotificationConfig {
     // Both halves are required. A key with no recipient would send mail to
     // Resend's own bounce address, and a recipient with no key cannot be sent to.
     //
-    // `fromDomain` is passed through exactly as configured — raw, unvalidated,
-    // possibly empty. Turning it into an address is `resendFromAddress()`'s job
-    // in the pure notification module, which has tests. Validating it here as
-    // well meant two places had to agree about what the value was, and when they
-    // disagreed the result was a malformed `From` header that silently stopped
-    // every email.
+    // Either address is enough: the internal notification goes to the support
+    // address when one is configured, and falls back to `SUPPORT_EMAIL`'s
+    // default when it is not, so `OWNER_EMAIL` being absent should not silently
+    // disable the channel.
+    //
+    // `fromDomain`, `emailFrom` and `supportEmail` are passed through exactly as
+    // configured — raw, unvalidated, possibly empty. Turning them into headers
+    // is the pure notification module's job, which has tests. Validating them
+    // here as well meant two places had to agree about what the value was, and
+    // when they disagreed the result was a malformed header that silently
+    // stopped every email.
     email:
-      resendKey && ownerEmail
-        ? { apiKey: resendKey, ownerEmail, fromDomain: process.env.RESEND_FROM_DOMAIN }
+      resendKey && (ownerEmail || supportEmail)
+        ? {
+            apiKey: resendKey,
+            ownerEmail,
+            supportEmail: supportEmail || undefined,
+            emailFrom: emailFrom || undefined,
+            fromDomain: process.env.RESEND_FROM_DOMAIN,
+          }
         : null,
     whatsapp:
       botKey && botPhone.length >= 8
         ? { apiKey: botKey, phone: botPhone }
         : null,
   };
+}
+
+/**
+ * The Vercel Blob token, if one is configured.
+ *
+ * Separate from `getServerEnv()` for the same reason as the rate limiter: the
+ * upload route has no use for `DATABASE_URL`, and calling the full validator
+ * would make "uploads cannot be issued a token" a consequence of "the database
+ * is not configured". Vercel sets `BLOB_READ_WRITE_TOKEN` automatically once a
+ * Blob store is connected to the project.
+ */
+export function getBlobConfig(): { token: string } | null {
+  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  return token ? { token } : null;
 }
 
 /**

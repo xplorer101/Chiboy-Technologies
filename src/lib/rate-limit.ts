@@ -52,12 +52,17 @@ export type RateLimitResult = {
 };
 
 /** Buckets keyed by action, so a spammer on one form cannot spend another's. */
-export type RateLimitAction = "contact" | "service-request";
+export type RateLimitAction = "contact" | "service-request" | "upload";
 
 /** Conservative defaults: generous to a real visitor, awkward for a script. */
 const DEFAULTS: Record<RateLimitAction, { limit: number; windowSeconds: number }> = {
   contact: { limit: 5, windowSeconds: 10 * 60 },
   "service-request": { limit: 3, windowSeconds: 30 * 60 },
+  // One token per image, and a request may carry up to five, so the budget has
+  // to allow several full submissions from one connection while still capping a
+  // script that is only trying to fill the store. This endpoint issues write
+  // tokens, so it is the one worth limiting even though it stores no row.
+  upload: { limit: 20, windowSeconds: 10 * 60 },
 };
 
 /**

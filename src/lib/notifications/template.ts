@@ -9,17 +9,17 @@
  * testable without a network, and it means the two channels cannot drift into
  * describing a request differently.
  *
- * WHY PLAIN TEXT
- * --------------
- * Both notifications are plain text, and the email is plain text even though
- * HTML would look better.
+ * WHY THERE IS BOTH TEXT AND HTML
+ * -------------------------------
+ * The owner notification carries a plain-text body as its main part, and an
+ * HTML alternative purely so the links to the visitor's images are clickable.
+ * Both are built here, from the same values, so they cannot describe a request
+ * differently.
  *
- * Every value interpolated here came from a public form. In an HTML email that
- * is an injection surface: a description containing markup has to be escaped, or
- * filtered, or sanitised, and forgetting is silent. There is no markup to
- * escape in a plain-text body, so the whole class of problem does not exist.
- * A notification inbox is also somewhere a plain, readable, copy-pasteable
- * summary is the right shape — nobody needs a styled template to act on it.
+ * Every value interpolated into either came from a public form, so every value
+ * put into the HTML is escaped. That was not optional before and it is not
+ * optional now that the HTML part exists: a description containing markup would
+ * otherwise be executed in the owner's mail client.
  */
 
 /** The subset of a stored request a notification needs. */
@@ -35,8 +35,15 @@ export type NewServiceRequest = {
   /** "Phone call", "WhatsApp" or "Email". */
   contactPreference: string;
   description: string;
-  /** How many files were stored with the request. */
+  /** How many images were stored with the request. */
   attachmentCount: number;
+  /**
+   * URLs of the stored images, in the order they were uploaded.
+   *
+   * Optional so existing callers and fixtures that only count attachments still
+   * typecheck; the notification treats absent and empty the same way.
+   */
+  imageUrls?: readonly string[] | undefined;
 };
 
 /**
@@ -77,6 +84,67 @@ export function resendFromAddress(configuredDomain: string | undefined): string 
   }
 
   return `notifications@${domain}`;
+}
+
+/**
+ * The address customers are told to write to, used when nothing is configured.
+ *
+ * A constant rather than a literal at each use site: the confirmation email
+ * states it twice (HTML and text) and the reply-to header is built from it, and
+ * four hand-typed copies of an address is four chances for one of them to be
+ * wrong in a way nobody notices until a reply bounces.
+ */
+export const SUPPORT_EMAIL_ADDRESS = "support@chiboytechnologies.com";
+
+/** A plausible address, used to reject a value that would produce a bad header. */
+const ADDRESS_PATTERN = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/;
+
+/**
+ * The support address to use, preferring configuration over the default.
+ *
+ * Falls back rather than failing: an unset or malformed `SUPPORT_EMAIL` should
+ * still leave customers and the reply-to header pointing at the real support
+ * inbox, not at an empty string that silently drops replies.
+ */
+export function resolveSupportEmail(configured: string | undefined): string {
+  const value = configured?.trim();
+  return value && ADDRESS_PATTERN.test(value) ? value : SUPPORT_EMAIL_ADDRESS;
+}
+
+/**
+ * Builds the `From` header.
+ *
+ * `EMAIL_FROM` wins when it is set and looks like an address, because it is the
+ * only input that can also carry a display name. Anything with a CRLF, a second
+ * `@` or angle brackets where they do not belong is rejected outright — a
+ * `From` header is a place header injection actually lands. When it is unusable
+ * the address is composed from the configured domain, exactly as before, so an
+ * unset or mistyped `EMAIL_FROM` degrades instead of stopping every send.
+ */
+export function resolveFromAddress(
+  emailFrom: string | undefined,
+  configuredDomain: string | undefined,
+): string {
+  const candidate = emailFrom?.trim();
+
+  if (candidate && isSafeFromHeader(candidate)) return candidate;
+
+  return `CHIBOY TECHNOLOGIES <${resendFromAddress(configuredDomain)}>`;
+}
+
+/**
+ * Whether a value is safe to put in a `From` header.
+ *
+ * Accepts either `addr@domain` or `Display Name <addr@domain>`. Newlines are
+ * rejected before anything else, because they are the character that turns one
+ * header into two.
+ */
+function isSafeFromHeader(value: string): boolean {
+  if (/[\r\n]/.test(value)) return false;
+
+  const angled = value.match(/<([^<>]*)>\s*$/);
+  const address = (angled ? angled[1] : value)?.trim() ?? "";
+  return ADDRESS_PATTERN.test(address);
 }
 
 const CONTACT_PREFERENCE_LABELS: Record<string, string> = {
@@ -135,6 +203,7 @@ export function serviceRequestEmailSubject(service: string): string {
  * to tell what it is without opening it.
  */
 export function serviceRequestEmailBody(request: NewServiceRequest): string {
+  const images = request.imageUrls ?? [];
   const lines = [
     `New service request received from the website.`,
     ``,
@@ -147,6 +216,7 @@ export function serviceRequestEmailBody(request: NewServiceRequest): string {
     `Prefers:    ${toSingleLine(contactPreferenceLabel(request.contactPreference))}`,
     `Attachments: ${describeAttachments(request.attachmentCount)}`,
     ``,
+    ...imageLines(images),
     `Message`,
     `-------`,
     request.description.trim(),
@@ -156,6 +226,86 @@ export function serviceRequestEmailBody(request: NewServiceRequest): string {
   ];
 
   return lines.join("\n");
+}
+
+/**
+ * The image links, as plain text.
+ *
+ * Bare URLs rather than labels, because a plain-text body has nowhere to hang a
+ * label. Most clients auto-link these, and the HTML part carries real anchors
+ * for the ones that do not.
+ */
+function imageLines(images: readonly string[]): string[] {
+  if (images.length === 0) return [];
+
+  return [`Images`, `------`, ...images.map((url) => `- ${url}`), ``];
+}
+
+/**
+ * The owner notification as HTML.
+ *
+ * Exists for one reason: so the image URLs are clickable in every client,
+ * including the ones that do not linkify a plain-text body. The text part
+ * remains the primary body, so a client that strips HTML still sees everything.
+ *
+ * Every interpolated value is escaped. The description is rendered inside a
+ * `white-space: pre-wrap` block so the line breaks the visitor typed survive
+ * without becoming markup.
+ */
+export function serviceRequestEmailHtml(request: NewServiceRequest): string {
+  const images = request.imageUrls ?? [];
+  const rows: Array<[string, string]> = [
+    ["Reference", request.reference],
+    ["Name", request.name],
+    ["Phone", request.phone],
+    ["Email", request.email],
+    ["Service", request.service],
+    ["Location", request.location],
+    ["Prefers", contactPreferenceLabel(request.contactPreference)],
+    ["Images", describeAttachments(request.attachmentCount)],
+  ];
+
+  const detailRows = rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:4px 12px 4px 0;font-weight:600;color:#4A4A4A;vertical-align:top;">${escapeHtml(
+          label,
+        )}</td><td style="padding:4px 0;">${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
+
+  const imageList =
+    images.length > 0
+      ? `<ul style="margin:0;padding-left:20px;">${images
+          .map(
+            (url) =>
+              `<li style="margin:4px 0;"><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></li>`,
+          )
+          .join("")}</ul>`
+      : `<p style="margin:0;color:#6B6B6B;">None.</p>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Service Request</title>
+</head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#1B3A6B;">
+  <p style="margin:0 0 16px;">New service request received from the website.</p>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:15px;margin-bottom:20px;">${detailRows}</table>
+
+  <h2 style="font-size:16px;margin:0 0 8px;">Message</h2>
+  <p style="margin:0 0 20px;white-space:pre-wrap;">${escapeHtml(request.description.trim())}</p>
+
+  <h2 style="font-size:16px;margin:0 0 8px;">Images</h2>
+  ${imageList}
+
+  <hr style="border:none;border-top:1px solid #E0E0E0;margin:24px 0;">
+  <p style="margin:0;font-size:13px;color:#6B6B6B;">Sent from the website's service request form.</p>
+</body>
+</html>`;
 }
 
 /**
@@ -191,6 +341,26 @@ function describeAttachments(count: number): string {
 }
 
 /**
+ * "We have received the 2 images you attached." or an empty string.
+ *
+ * Only stated when something was actually attached, so nobody is told about
+ * images they did not send. The count is pluralised because "1 images" reads as
+ * a bug to the person receiving the confirmation.
+ */
+function imagesReceivedSentence(count: number): string {
+  if (count <= 0) return "";
+  return `We have also received the ${count === 1 ? "image" : `${count} images`} you attached.`;
+}
+
+function imagesReceivedNoteHtml(count: number): string {
+  const sentence = imagesReceivedSentence(count);
+  if (!sentence) return "";
+  return `        <p style="margin: 0 0 24px; font-size: 16px; color: #1B3A6B;">${escapeHtml(
+    sentence,
+  )}</p>\n`;
+}
+
+/**
  * Escapes HTML special characters to prevent injection.
  * Every value interpolated into the HTML template comes from a public form,
  * so this is mandatory — not optional.
@@ -211,11 +381,15 @@ export function escapeHtml(value: string): string {
  * Colours match the site palette: Deep Navy (#1B3A6B), Rich Gold (#C8A951), White.
  * All user-supplied values are HTML-escaped before interpolation.
  */
-export function customerConfirmationEmailHtml(request: NewServiceRequest): string {
+export function customerConfirmationEmailHtml(
+  request: NewServiceRequest,
+  supportEmail: string = SUPPORT_EMAIL_ADDRESS,
+): string {
   const safeName = escapeHtml(request.name);
   const safeReference = escapeHtml(request.reference);
   const safeService = escapeHtml(request.service);
   const safeLocation = escapeHtml(request.location);
+  const safeSupportEmail = escapeHtml(resolveSupportEmail(supportEmail));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -245,6 +419,7 @@ export function customerConfirmationEmailHtml(request: NewServiceRequest): strin
         <p style="margin: 0 0 16px; font-size: 16px; color: #1B3A6B;">Dear <strong>${safeName}</strong>,</p>
 
         <p style="margin: 0 0 24px; font-size: 16px; color: #1B3A6B;">Thank you for contacting CHIBOY TECHNOLOGIES. We have received your service request and will review it shortly.</p>
+${imagesReceivedNoteHtml(request.attachmentCount)}
 
         <!-- Details card -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #E0E0E0; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
@@ -282,7 +457,7 @@ export function customerConfirmationEmailHtml(request: NewServiceRequest): strin
           <tr>
             <td style="padding: 12px 16px; background-color: #F8F8F8; border-radius: 6px; border: 1px solid #E8E8E8;">
               <p style="margin: 0; font-size: 14px; color: #1B3A6B;"><strong>Phone/WhatsApp:</strong> +234 810 285 4969</p>
-              <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Email:</strong> chiboytechnologies@gmail.com</p>
+              <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Email:</strong> ${safeSupportEmail}</p>
               <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Address:</strong> Suite 12, City Shoppers Plaza, Kuje, FCT Abuja</p>
               <p style="margin: 8px 0 0; font-size: 14px; color: #1B3A6B;"><strong>Hours:</strong> Monday–Friday, 8:00 AM – 6:00 PM</p>
             </td>
@@ -311,13 +486,18 @@ export function customerConfirmationEmailHtml(request: NewServiceRequest): strin
  * Plain-text fallback for the customer confirmation email.
  * Used as the `text` part in the multipart email.
  */
-export function customerConfirmationEmailText(request: NewServiceRequest): string {
+export function customerConfirmationEmailText(
+  request: NewServiceRequest,
+  supportEmail: string = SUPPORT_EMAIL_ADDRESS,
+): string {
+  const imagesNote = imagesReceivedSentence(request.attachmentCount);
   const lines = [
     "CHIBOY TECHNOLOGIES — Service Request Confirmation",
     "",
     `Dear ${toSingleLine(request.name)},`,
     "",
     "Thank you for contacting CHIBOY TECHNOLOGIES. We have received your service request and will review it shortly.",
+    ...(imagesNote ? ["", imagesNote] : []),
     "",
     "Request Details",
     "---------------",
@@ -330,7 +510,7 @@ export function customerConfirmationEmailText(request: NewServiceRequest): strin
     "If you need to add any information before we reach out, please contact us directly:",
     "",
     "Phone/WhatsApp: +234 810 285 4969",
-    "Email: chiboytechnologies@gmail.com",
+    `Email: ${resolveSupportEmail(supportEmail)}`,
     "Address: Suite 12, City Shoppers Plaza, Kuje, FCT Abuja",
     "Hours: Monday–Friday, 8:00 AM – 6:00 PM",
     "",

@@ -11,10 +11,16 @@ import {
   type Ref,
 } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
-import { Paperclip, X } from "lucide-react";
+import { Image as ImageIcon, Loader2, X } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 
 import { cn } from "@/lib/utils/cn";
 import { HONEYPOT_FIELD } from "@/lib/validation/forms";
+import {
+  imageBlobPathname,
+  imageSelectionSchema,
+  type ImageContentType,
+} from "@/lib/validation/images";
 
 /**
  * Parts shared by the two public forms.
@@ -132,7 +138,7 @@ export function ResultRegion({
   );
 }
 
-type SelectedFile = { name: string; size: number };
+type SelectedImage = { name: string; url: string; size: number };
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -141,39 +147,46 @@ function formatBytes(bytes: number): string {
 }
 
 /**
- * The attachment picker.
+ * The image picker.
  *
- * Uncontrolled on purpose. A `File` in React state is a reference to a blob the
- * browser may revoke, it is awkward to serialise, and it buys nothing — the
- * browser already holds the selection on the input element, and the action reads
- * it from there. The list below is local state purely so the visitor can see and
- * undo what they picked.
+ * Uncontrolled on purpose: a `File` in React state is a reference to a blob the
+ * browser may revoke and is awkward to serialise. It matters more here than it
+ * did for a plain file input, though — each image is uploaded as soon as it is
+ * chosen, so by the time the form is submitted there are no `File` objects left
+ * to read. What the form submits is the list of URLs this component holds, which
+ * is why the imperative handle exposes those rather than a `FileList`.
  *
- * The `ref` exists for the one thing local state cannot do by itself. When a
- * submission succeeds the form clears itself, and the input has to be cleared
- * to match — otherwise a second submission quietly re-sends the same three
- * files, and the visitor never chose to send them twice. Clearing the DOM value
- * from outside is not enough, because the visible list is React state, so the
- * reset is exposed as an imperative handle and does both.
+ * WHY THE UPLOAD HAPPENS ON SELECTION
+ * -----------------------------------
+ * Two reasons, and both are about the visitor. Uploading here means the wait
+ * happens while they are still filling in the description, rather than all at
+ * once when they press submit — where a slow connection would look like a hung
+ * form. And it keeps the bytes out of the Server Action request entirely, which
+ * is capped well below the size of a few phone photos.
  *
- * The checks here are a courtesy, not a control. They are duplicated on the
- * server against the file's actual bytes, and this component has no way to know
- * what those bytes are.
+ * The `ref` exists for the same reason as the old file input's: on success the
+ * form resets, and the URL list has to be cleared with it, or a second
+ * submission quietly re-sends images the visitor chose once.
+ *
+ * The checks here are a courtesy, not a control. They keep a bad selection from
+ * ever leaving the page; the size and type are enforced again when the token is
+ * issued, and the resulting URLs are checked once more server-side.
  */
-export type FileInputHandle = {
-  /** Clears the selection and the visible list. */
+export type ImageUploadHandle = {
+  /** Clears the uploaded list and any in-flight uploads. */
   reset: () => void;
-  /** The live selection, for the submit handler to read. */
-  getFiles: () => FileList | null;
+  /** The URLs of the images that finished uploading. */
+  getUrls: () => string[];
 };
 
-export function FileInputField({
+type PendingUpload = { id: string; name: string; size: number; percent: number };
+
+export function ImageUploadField({
   id,
   label,
   hint,
   error,
   maxFiles,
-  maxMb,
   accept,
   required,
   ref,
@@ -183,30 +196,101 @@ export function FileInputField({
   hint?: string;
   error?: string | undefined;
   maxFiles: number;
-  maxMb: number;
   accept: string;
   required?: boolean;
-  ref?: Ref<FileInputHandle>;
+  ref?: Ref<ImageUploadHandle>;
 }) {
-  const [files, setFiles] = useState<SelectedFile[]>([]);
+  const [images, setImages] = useState<SelectedImage[]>([]);
+  const [pending, setPending] = useState<PendingUpload[]>([]);
   const [localError, setLocalError] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // The imperative handle is created once; reading the list from a ref keeps it
+  // from being rebuilt — and the child from re-rendering — on every upload.
+  const imagesRef = useRef<SelectedImage[]>([]);
+  imagesRef.current = images;
+
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error || localError ? `${id}-error` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   const invalid = Boolean(error || localError);
 
   const clear = useCallback(() => {
-    setFiles([]);
+    setImages([]);
+    setPending([]);
     setLocalError(undefined);
     if (inputRef.current) inputRef.current.value = "";
   }, []);
 
+  const removeImage = useCallback((url: string) => {
+    setImages((current) => current.filter((image) => image.url !== url));
+  }, []);
+
   useImperativeHandle(
     ref,
-    () => ({ reset: clear, getFiles: () => inputRef.current?.files ?? null }),
+    () => ({ reset: clear, getUrls: () => imagesRef.current.map((image) => image.url) }),
     [clear],
   );
+
+  async function uploadSelection(selected: File[]): Promise<void> {
+    setLocalError(undefined);
+    if (selected.length === 0) return;
+
+    const remaining = maxFiles - imagesRef.current.length - pending.length;
+    if (selected.length > remaining) {
+      setLocalError(
+        remaining <= 0
+          ? `You can attach no more than ${maxFiles} images. Remove one to add another.`
+          : `You can add ${remaining} more image${remaining === 1 ? "" : "s"} — up to ${maxFiles} in total.`,
+      );
+      return;
+    }
+
+    const parsed = imageSelectionSchema.safeParse(
+      selected.map((file) => ({ name: file.name, type: file.type, size: file.size })),
+    );
+    if (!parsed.success) {
+      setLocalError(parsed.error.issues[0]?.message ?? "Those images cannot be uploaded.");
+      return;
+    }
+
+    for (const file of selected) {
+      const type = file.type as ImageContentType;
+      const entryId = crypto.randomUUID();
+
+      setPending((current) => [
+        ...current,
+        { id: entryId, name: file.name, size: file.size, percent: 0 },
+      ]);
+
+      try {
+        const blob = await upload(imageBlobPathname(type, crypto.randomUUID()), file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+          contentType: type,
+          // Read by the upload route and checked before a token is issued, so
+          // the type is verified rather than taken on trust.
+          clientPayload: JSON.stringify({ type }),
+          onUploadProgress: ({ percentage }) => {
+            setPending((current) =>
+              current.map((item) =>
+                item.id === entryId ? { ...item, percent: Math.round(percentage) } : item,
+              ),
+            );
+          },
+        });
+
+        setPending((current) => current.filter((item) => item.id !== entryId));
+        setImages((current) => [
+          ...current,
+          { name: file.name, url: blob.url, size: file.size },
+        ]);
+      } catch {
+        setPending((current) => current.filter((item) => item.id !== entryId));
+        setLocalError(`We could not upload "${file.name}". Please try again.`);
+      }
+    }
+  }
 
   return (
     <div className="space-y-2">
@@ -232,21 +316,11 @@ export function FileInputField({
         aria-describedby={describedBy}
         onChange={(event) => {
           const selected = Array.from(event.target.files ?? []);
-          setLocalError(undefined);
-
-          if (selected.length > maxFiles) {
-            setFiles(selected.slice(0, maxFiles));
-            setLocalError(`Please attach no more than ${maxFiles} files.`);
-            return;
-          }
-
-          const oversized = selected.find((file) => file.size > maxMb * 1024 * 1024);
-          if (oversized) {
-            setLocalError(`"${oversized.name}" is larger than ${maxMb} MB.`);
-            return;
-          }
-
-          setFiles(selected.map((file) => ({ name: file.name, size: file.size })));
+          // Cleared immediately so picking the same file again after removing it
+          // still fires `change` — the browser only fires it when the selection
+          // differs from the current one.
+          event.target.value = "";
+          void uploadSelection(selected);
         }}
         className={cn(
           "block w-full cursor-pointer rounded-lg border bg-white text-sm text-charcoal-900",
@@ -257,25 +331,40 @@ export function FileInputField({
         )}
       />
 
-      {files.length > 0 ? (
-        <ul className="space-y-1.5">
-          {files.map((file) => (
+      {pending.length > 0 ? (
+        <ul className="space-y-1.5" aria-live="polite">
+          {pending.map((item) => (
             <li
-              key={file.name}
+              key={item.id}
+              className="flex items-center gap-3 rounded-lg bg-charcoal-50 px-3 py-2 text-sm text-charcoal-600"
+            >
+              <Loader2 className="size-4 shrink-0 animate-spin text-blue-600" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">{item.name}</span>
+              <span className="shrink-0 tabular-nums">Uploading… {item.percent}%</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {images.length > 0 ? (
+        <ul className="space-y-1.5">
+          {images.map((image) => (
+            <li
+              key={image.url}
               className="flex items-center justify-between gap-3 rounded-lg bg-charcoal-50 px-3 py-2 text-sm text-charcoal-800"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <Paperclip className="size-4 shrink-0 text-charcoal-500" aria-hidden="true" />
-                <span className="truncate">{file.name}</span>
-                <span className="shrink-0 text-charcoal-500">{formatBytes(file.size)}</span>
+                <ImageIcon className="size-4 shrink-0 text-charcoal-500" aria-hidden="true" />
+                <span className="truncate">{image.name}</span>
+                <span className="shrink-0 text-charcoal-500">{formatBytes(image.size)}</span>
               </span>
               <button
                 type="button"
-                onClick={clear}
+                onClick={() => removeImage(image.url)}
                 className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-charcoal-600 hover:bg-charcoal-100 hover:text-charcoal-900"
               >
                 <X className="size-4" aria-hidden="true" />
-                <span className="sr-only">Remove all attachments</span>
+                <span className="sr-only">Remove {image.name}</span>
               </button>
             </li>
           ))}

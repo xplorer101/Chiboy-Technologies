@@ -2,13 +2,13 @@
 
 import { RequestStatus } from "@/generated/prisma/enums";
 
-import { deleteStoredFile, storeAttachments, type StoredAttachment } from "@/lib/upload/storage";
 import {
   fieldErrorsFrom,
   isHoneypotTripped,
   OTHER_SERVICE,
   serviceRequestSchema,
 } from "@/lib/validation/forms";
+import { imageUrlsSchema } from "@/lib/validation/images";
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
 import { minutesUntilReset, rateLimit } from "@/lib/rate-limit";
@@ -25,17 +25,23 @@ import {
 /**
  * Service request submission.
  *
- * Same shape as the contact action, with the addition of file handling — which
- * is the part with real failure modes and therefore the part worth being careful
+ * Same shape as the contact action, with the addition of image attachments —
+ * which have real failure modes and are therefore the part worth being careful
  * about.
  *
- * WHY ATTACHMENTS ARE STORED BEFORE THE ROW IS WRITTEN
- * ---------------------------------------------------
- * Files land on disk first, then the request is inserted, then the attachment
- * rows are written. The ordering is chosen so the database is never left
- * pointing at files that do not exist. If the insert fails, the files are
- * removed; the reverse order would leave a request claiming three attachments
- * that were never stored, which is the state nobody can reconcile later.
+ * WHY THE IMAGES ARE UPLOADED BEFORE THE FORM IS SUBMITTED
+ * -------------------------------------------------------
+ * Images go straight from the browser to Vercel Blob, not through this action.
+ * A Server Action request body is capped (about 4.5 MB on Vercel), so a handful
+ * of phone photos would fail the submission outright if they were sent here.
+ * The form therefore uploads each image as it is chosen and submits only the
+ * URLs, which are a few hundred bytes.
+ *
+ * The consequence is that the bytes are already stored by the time this action
+ * runs, so the URLs arrive from the client and must not be trusted. They are
+ * re-validated here with the same schema the browser used — HTTPS, a Blob host,
+ * an image extension, and at most the allowed number — so a crafted submission
+ * cannot put an arbitrary URL into the record and the notification email.
  *
  * WHY NOTIFICATION IS LAST AND CANNOT FAIL THE REQUEST
  * ---------------------------------------------------
@@ -54,20 +60,21 @@ import {
 
 export type ServiceRequestResult = ActionResult<{ reference: string }>;
 
-/** Read the uploaded files off the form, ignoring any empty file input. */
-function collectFiles(formData: FormData): File[] {
-  const entries = formData.getAll("attachments");
-  return entries.filter(
-    (entry): entry is File => entry instanceof File && entry.size > 0 && entry.name !== "",
-  );
+/** Read the uploaded image URLs off the form, dropping empties. */
+function collectImageUrls(formData: FormData): string[] {
+  return formData
+    .getAll("imageUrls")
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
 }
 
 export async function submitServiceRequest(
   formData: FormData,
 ): Promise<ServiceRequestResult> {
   const identifier = await getClientIdentifier();
-  // A tighter budget than the contact form: this one stores files, and each
-  // attempt costs disk as well as a row.
+  // A tighter budget than the contact form: this one can store images and row
+  // creation is more expensive to absorb in bulk.
   const limit = await rateLimit("service-request", identifier);
 
   if (!limit.allowed) {
@@ -137,25 +144,21 @@ export async function submitServiceRequest(
         ? values.serviceOther || null
         : null;
 
-  const files = collectFiles(formData);
-  const uploaded = await storeAttachments(files);
+  // The URLs were produced by the browser upload to Blob, so they are re-checked
+  // here. A URL that fails is a reason to reject: nothing has been written, and
+  // a caller sending an arbitrary URL is not one whose request should be filed
+  // with a link the owner might click.
+  const parsedImages = imageUrlsSchema.safeParse(collectImageUrls(formData));
 
-  // A file the visitor should not have sent is a reason to reject: nothing has
-  // been written, and sending it again unchanged would fail the same way.
-  //
-  // A storage backend that cannot be written to is not. The file was
-  // acceptable and the enquiry is the thing that matters, so the request is
-  // still recorded below and only the attachment is lost. The alternative —
-  // failing the whole submission — loses a real customer over a supplementary
-  // file, and is the path every Vercel deployment takes for any attachment.
-  if (!uploaded.ok && !uploaded.storageUnavailable) {
-    // Nothing was written to disk: `storeAttachments` validates every file before
-    // writing any of them.
-    return { status: "error", message: uploaded.message };
+  if (!parsedImages.success) {
+    return {
+      status: "error",
+      message: parsedImages.error.issues[0]?.message ?? "Please check the attached images.",
+      fieldErrors: { imageUrls: parsedImages.error.issues[0]?.message ?? "Invalid images." },
+    };
   }
 
-  const attachmentProblem = !uploaded.ok ? uploaded.message : null;
-  const storedFiles = uploaded.ok ? uploaded.files : [];
+  const imageUrls = parsedImages.data;
 
   const reference = generateReference();
 
@@ -172,23 +175,10 @@ export async function submitServiceRequest(
         contactPref: values.contactPref,
         description: values.description,
         status: RequestStatus.NEW,
-        // The one thing a human reading this record needs to know that the
-        // columns cannot show: a file was offered and is not on disk.
-        ...(attachmentProblem
-          ? { internalNotes: `Attachment not stored: ${attachmentProblem}` }
-          : {}),
-        // Nested create, so the request and its attachments are one transaction.
-        // A partial attachment set is not a state the database can be in.
-        ...(storedFiles.length > 0
-          ? { attachments: { create: toAttachmentRows(storedFiles) } }
-          : {}),
+        imageUrls,
       },
     });
   } catch (error) {
-    // Roll the files back. The database write is the thing that failed, so the
-    // files it would have referenced have no reason to exist.
-    await Promise.all(storedFiles.map((file) => deleteStoredFile(file.storageKey)));
-
     console.error(
       "[service-request] Submission failed:",
       error instanceof Error ? error.message : "unknown error",
@@ -220,7 +210,8 @@ export async function submitServiceRequest(
     location: values.location,
     contactPreference: values.contactPref,
     description: values.description,
-    attachmentCount: storedFiles.length,
+    attachmentCount: imageUrls.length,
+    imageUrls,
   }).catch((error: unknown) => {
     console.error(
       `[service-request] Notification for ${reference} failed unexpectedly:`,
@@ -233,7 +224,7 @@ export async function submitServiceRequest(
   // must not affect the visitor's success response. Errors are logged only.
   try {
     const serverEnv = await import("@/lib/env").then((m) => m.getServerEnv());
-    if (serverEnv.RESEND_API_KEY && serverEnv.OWNER_EMAIL) {
+    if (serverEnv.RESEND_API_KEY && (serverEnv.OWNER_EMAIL || serverEnv.SUPPORT_EMAIL)) {
       await sendCustomerConfirmationEmail(
         {
           reference,
@@ -244,11 +235,14 @@ export async function submitServiceRequest(
           location: values.location,
           contactPreference: values.contactPref,
           description: values.description,
-          attachmentCount: storedFiles.length,
+          attachmentCount: imageUrls.length,
+          imageUrls,
         },
         {
           apiKey: serverEnv.RESEND_API_KEY,
-          ownerEmail: serverEnv.OWNER_EMAIL,
+          ownerEmail: serverEnv.OWNER_EMAIL ?? "",
+          supportEmail: serverEnv.SUPPORT_EMAIL || undefined,
+          emailFrom: serverEnv.EMAIL_FROM || undefined,
           fromDomain: serverEnv.RESEND_FROM_DOMAIN,
         },
       ).catch((error: unknown) => {
@@ -266,21 +260,7 @@ export async function submitServiceRequest(
 
   return {
     status: "success",
-    // The stored request is reported as stored in both cases. When a file was
-    // lost, the visitor is told plainly rather than shown a bare success they
-    // would read as "everything you sent arrived".
-    message: attachmentProblem ? `${SUCCESS_MESSAGE} ${attachmentProblem}` : SUCCESS_MESSAGE,
+    message: SUCCESS_MESSAGE,
     data: { reference },
   };
-}
-
-/** Maps the storage result onto the attachment table's columns. */
-function toAttachmentRows(files: readonly StoredAttachment[]) {
-  return files.map((file) => ({
-    originalName: file.originalName,
-    storedName: file.storageKey.split("/").at(-1) ?? file.storageKey,
-    storageKey: file.storageKey,
-    mimeType: file.mimeType,
-    sizeBytes: file.sizeBytes,
-  }));
 }

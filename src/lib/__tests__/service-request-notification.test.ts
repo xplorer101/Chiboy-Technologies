@@ -25,18 +25,9 @@ const prismaMock = {
   serviceRequest: { create: vi.fn() },
 };
 
-const storageMock = {
-  storeAttachments: vi.fn(),
-  deleteStoredFile: vi.fn(),
-};
-
 const notifyMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/upload/storage", () => ({
-  storeAttachments: storageMock.storeAttachments,
-  deleteStoredFile: storageMock.deleteStoredFile,
-}));
 vi.mock("@/lib/notifications", () => ({ notifyNewServiceRequest: notifyMock }));
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn(async () => ({ allowed: true, remaining: 2, resetAt: Date.now() + 600_000 })),
@@ -71,12 +62,22 @@ function validForm(overrides: Record<string, string> = {}): FormData {
   return form;
 }
 
+/** A valid submission with image URLs appended the way the form submits them. */
+function formWithImages(urls: readonly string[], overrides: Record<string, string> = {}): FormData {
+  const form = validForm(overrides);
+  for (const url of urls) form.append("imageUrls", url);
+  return form;
+}
+
+/** A URL shape the browser upload actually returns. */
+function blobUrl(name: string): string {
+  return `https://chi-technologies.public.blob.vercel-storage.com/service-requests/${name}`;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.serviceCategory.findUnique.mockResolvedValue({ id: "cat_1", name: "Networking" });
   prismaMock.serviceRequest.create.mockResolvedValue({ id: "req_1" });
-  storageMock.storeAttachments.mockResolvedValue({ ok: true, files: [] });
-  storageMock.deleteStoredFile.mockResolvedValue(undefined);
   notifyMock.mockResolvedValue({ email: "sent", whatsapp: "sent", reasons: [] });
 });
 
@@ -88,10 +89,10 @@ function notifiedPayload(): NewServiceRequest {
 }
 
 /** The `data` object handed to the Prisma insert. */
-function insertedRow(): { serviceId: string | null } {
+function insertedRow(): { serviceId: string | null; imageUrls: string[] } {
   const call = prismaMock.serviceRequest.create.mock.calls[0];
   expect(call, "expected a service request to have been created").toBeDefined();
-  return (call![0] as { data: { serviceId: string | null } }).data;
+  return (call![0] as { data: { serviceId: string | null; imageUrls: string[] } }).data;
 }
 
 describe("submitServiceRequest — notification failure must not fail the request", () => {
@@ -204,18 +205,54 @@ describe("submitServiceRequest — what the notifier is told", () => {
     expect(insertedRow().serviceId).toBeNull();
   });
 
-  it("counts the stored files so the owner knows to look for them", async () => {
-    storageMock.storeAttachments.mockResolvedValue({
-      ok: true,
-      files: [
-        { storageKey: "a/1", originalName: "plan.pdf", mimeType: "application/pdf", sizeBytes: 10 },
-        { storageKey: "a/2", originalName: "photo.png", mimeType: "image/png", sizeBytes: 20 },
-      ],
-    });
+  it("stores the image URLs and tells the owner how many to look for", async () => {
+    const urls = [blobUrl("a1b2.jpg"), blobUrl("c3d4.png")];
 
+    await submitServiceRequest(formWithImages(urls));
+
+    // The count drives the "Attachments" line, and the URLs are what the owner
+    // actually clicks. Both must come from the same list.
+    expect(notifiedPayload().attachmentCount).toBe(2);
+    expect(notifiedPayload().imageUrls).toEqual(urls);
+    expect(insertedRow().imageUrls).toEqual(urls);
+  });
+
+  it("records an empty list when the visitor attached no images", async () => {
     await submitServiceRequest(validForm());
 
-    expect(notifiedPayload().attachmentCount).toBe(2);
+    expect(notifiedPayload().attachmentCount).toBe(0);
+    expect(insertedRow().imageUrls).toEqual([]);
+  });
+
+  it("rejects a URL that does not point at our blob store", async () => {
+    // The URLs arrive from the client, so this is the check that stops a crafted
+    // submission putting an arbitrary link into the record and the email. The
+    // schema is the same one the browser runs; this asserts it is also run here.
+    const result = await submitServiceRequest(
+      formWithImages(["https://evil.example.com/service-requests/x.jpg"]),
+    );
+
+    expect(result.status).toBe("error");
+    expect(prismaMock.serviceRequest.create).not.toHaveBeenCalled();
+    expect(notifyMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-image URL from our own store", async () => {
+    const result = await submitServiceRequest(
+      formWithImages([blobUrl("resume.pdf")]),
+    );
+
+    expect(result.status).toBe("error");
+    expect(prismaMock.serviceRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects more images than the form allows", async () => {
+    const tooMany = Array.from({ length: 6 }, (_, index) => blobUrl(`${index}.jpg`));
+
+    const result = await submitServiceRequest(formWithImages(tooMany));
+
+    expect(result.status).toBe("error");
+    expect(prismaMock.serviceRequest.create).not.toHaveBeenCalled();
   });
 
   it("does not notify for a rejected submission", async () => {

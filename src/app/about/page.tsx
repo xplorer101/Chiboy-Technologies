@@ -6,6 +6,7 @@ import { Container, Section, SectionHeading } from "@/components/ui/Layout";
 import { Breadcrumbs, breadcrumbJsonLd } from "@/components/ui/Breadcrumbs";
 import { TrustIcon } from "@/components/ui/Card";
 import { ButtonLink, buttonStyles } from "@/components/ui/Button";
+import { DarkHero } from "@/components/sections/DarkHero";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { CtaBand } from "@/components/layout/Footer";
 
@@ -81,44 +82,37 @@ export default function AboutPage() {
       />
 
       {/* ---- Header ---- */}
-      <section className="bg-navy-900">
-        <Container className="py-12 sm:py-16">
-          <Breadcrumbs items={crumbs} tone="dark" className="mb-6" />
+      {/* The heading names the page. The experience statement is the strongest
+          line on it, but a heading that says what the page is beats one that
+          says something quotable about the business — and a screen reader
+          jumping by heading lands somewhere meaningful either way.
 
-          <div className="max-w-3xl">
-            {/* The heading names the page. The experience statement is the
-                strongest line on it, but a heading that says what the page is
-                beats one that says something quotable about the business — and
-                a screen reader jumping by heading lands somewhere meaningful
-                either way. */}
-            <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl lg:text-5xl">
-              {/* One text node, not `About {site.name}`. React separates adjacent
-                  expressions with a comment marker, which leaves the heading as
-                  two nodes in the served HTML — harmless to a screen reader, but
-                  sloppy for anything scraping the text. */}
-              {`About ${site.name}`}
-            </h1>
-            <p className="mt-5 text-lg leading-relaxed text-charcoal-300">
-              {aboutPage.purpose}
-            </p>
-
-            <p className="mt-6 inline-flex items-center gap-2.5 text-sm font-semibold text-navy-200">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-blue-400" />
-              {getExperienceStatement()}
-            </p>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <ButtonLink href="/request-service" variant="accent" size="lg">
-                Request a Service
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </ButtonLink>
-              <ButtonLink href="/services" variant="ghostDark" size="lg">
-                See what we do
-              </ButtonLink>
-            </div>
-          </div>
-        </Container>
-      </section>
+          `heading` is a single text node, not `About {site.name}`. React
+          separates adjacent expressions with a comment marker, which leaves the
+          heading as two nodes in the served HTML — harmless to a screen reader,
+          but sloppy for anything scraping the text. */}
+      <DarkHero
+        breadcrumbs={<Breadcrumbs items={crumbs} tone="dark" className="mb-6" />}
+        heading={`About ${site.name}`}
+        lead={aboutPage.purpose}
+        note={
+          <p className="mt-6 inline-flex items-center gap-2.5 text-sm font-semibold text-navy-200">
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-blue-400" />
+            {getExperienceStatement()}
+          </p>
+        }
+        actions={
+          <>
+            <ButtonLink href="/request-service" variant="accent" size="lg">
+              Request a Service
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </ButtonLink>
+            <ButtonLink href="/services" variant="ghostDark" size="lg">
+              See what we do
+            </ButtonLink>
+          </>
+        }
+      />
 
       {/* ---- What we do, and why ---- */}
       <Section tone="white">

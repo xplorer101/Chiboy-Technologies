@@ -7,19 +7,26 @@ import { ServiceRequestForm } from "@/components/forms/ServiceRequestForm";
 import { Breadcrumbs, breadcrumbJsonLd } from "@/components/ui/Breadcrumbs";
 import { Container, Section, SectionHeading } from "@/components/ui/Layout";
 import { services } from "@/content/services";
-import { getPublicEnv, getServerEnv } from "@/lib/env";
-import { acceptedFileTypes } from "@/lib/upload/detect";
-import { MAX_ATTACHMENTS } from "@/lib/upload/storage";
+import { getPublicEnv } from "@/lib/env";
+import { IMAGE_ACCEPT, IMAGE_MAX_FILES, IMAGE_MAX_MB } from "@/lib/validation/images";
 
 /**
  * The service request page.
  *
- * THE ONLY FORM THAT TAKES ATTACHMENTS
- * -----------------------------------
+ * THE ONLY FORM THAT TAKES IMAGES
+ * -------------------------------
  * A request is the one route that lets a visitor show rather than tell, so it
- * carries a file picker, a location field and a contact preference — a phone
+ * carries an image picker, a location field and a contact preference — a phone
  * call is usually the fastest way to resolve a technical problem, and the form
  * says so rather than assuming email.
+ *
+ * WHY THE IMAGE LIMITS ARE IMPORTED RATHER THAN READ FROM THE ENVIRONMENT
+ * -----------------------------------------------------------------------
+ * The `accept` attribute, the hint a visitor reads, the browser-side check and
+ * the server-side check are all derived from one module
+ * (`src/lib/validation/images.ts`). Four copies of "five images, five
+ * megabytes" would eventually disagree, and a visitor would discover the
+ * mismatch by having an upload refused with no explanation.
  *
  * WHY THE PAGE IS STATIC
  * ----------------------
@@ -71,14 +78,7 @@ export default async function RequestServicePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const preselected = preselectService(params.service);
 
-  const env = getServerEnv();
   const { siteUrl } = getPublicEnv();
-  // The page's `accept` attribute and the on-page explanation are both derived
-  // from the same allowlist the server enforces, so the two cannot disagree
-  // about what is uploadable.
-  const accept = acceptedFileTypes()
-    .map((type) => type.mime)
-    .join(",");
 
   return (
     <>
@@ -132,9 +132,9 @@ export default async function RequestServicePage({ searchParams }: PageProps) {
                     id: service.slug,
                     name: service.name,
                   }))}
-                  maxFiles={MAX_ATTACHMENTS}
-                  maxMb={env.MAX_UPLOAD_MB}
-                  accept={accept}
+                  maxFiles={IMAGE_MAX_FILES}
+                  maxMb={IMAGE_MAX_MB}
+                  accept={IMAGE_ACCEPT}
                   preselectedService={preselected}
                 />
               </div>
