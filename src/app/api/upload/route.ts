@@ -62,6 +62,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   const limit = await rateLimit("upload", identifier);
 
   if (!limit.allowed) {
+    console.error(
+      `[upload] Rate limit exceeded (backend: ${limit.backend}); refusing a token request from ${identifier}.`,
+    );
     return NextResponse.json(
       { error: "Too many uploads from this connection. Please wait a moment and try again." },
       { status: 429 },
@@ -72,7 +75,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     body = (await request.json()) as HandleUploadBody;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[upload] Could not parse the request body as JSON:",
+      error instanceof Error ? error.message : "unknown error",
+    );
     return NextResponse.json({ error: "Could not read the upload request." }, { status: 400 });
   }
 
@@ -85,18 +92,27 @@ export async function POST(request: Request): Promise<NextResponse> {
       // the upload without ever handing out a write token.
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         if (!isAllowedImagePathname(pathname)) {
+          console.error(`[upload] Refused pathname outside the allowed image prefix: ${pathname}`);
           throw new Error("Unsupported upload path.");
         }
 
         let payload: unknown;
         try {
           payload = JSON.parse(clientPayload ?? "");
-        } catch {
+        } catch (error) {
+          console.error(
+            `[upload] Refused upload with an unparseable client payload for ${pathname}:`,
+            error instanceof Error ? error.message : "unknown error",
+          );
           throw new Error("Unsupported upload payload.");
         }
 
         const parsed = uploadedImagePayloadSchema.safeParse(payload);
         if (!parsed.success) {
+          console.error(
+            `[upload] Refused upload of an unsupported image type for ${pathname}:`,
+            parsed.error.issues.map((issue) => issue.message).join(", "),
+          );
           throw new Error("Unsupported image type.");
         }
 
@@ -104,6 +120,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         // declared, so an image cannot be filed under a name that lies about it.
         const extension = IMAGE_EXTENSION_BY_TYPE[parsed.data.type];
         if (!pathname.toLowerCase().endsWith(`.${extension}`)) {
+          console.error(
+            `[upload] Refused upload whose pathname extension does not match its declared type ${parsed.data.type}: ${pathname}`,
+          );
           throw new Error("Upload path does not match the image type.");
         }
 
@@ -119,7 +138,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(result);
   } catch (error) {
     console.error(
-      "[upload] Refused:",
+      "[upload] Failed to generate an upload token:",
       error instanceof Error ? error.message : "unknown error",
     );
     return NextResponse.json({ error: "That upload could not be started." }, { status: 400 });

@@ -265,6 +265,7 @@ values**. `.env.local` is gitignored and must never be committed.
 | `CALLMEBOT_APIKEY` | no | CallMeBot key. If unset, no WhatsApp message is attempted |
 | `UPSTASH_REDIS_REST_URL` | production | Redis REST endpoint for rate limiting |
 | `UPSTASH_REDIS_REST_TOKEN` | production | Redis REST token |
+| `BLOB_READ_WRITE_TOKEN` | production | Vercel Blob read-write token. Set automatically when a Blob store is connected to the project. The browser uploads images straight to Blob, so without it `/api/upload` refuses tokens with a 503 |
 | `UPLOAD_DIR` | no | Defaults to `private-uploads` |
 | `MAX_UPLOAD_MB` | no | Defaults to `4` (Vercel's Server Action body limit) |
 

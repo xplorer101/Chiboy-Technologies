@@ -140,6 +140,17 @@ export function ResultRegion({
 
 type SelectedImage = { name: string; url: string; size: number };
 
+/**
+ * How long a single image upload may take before it is abandoned.
+ *
+ * The Blob client SDK has no timeout of its own, and it retries requests it
+ * classifies as network errors (up to ten times, with exponential backoff). A
+ * blocked or stalled upload would therefore leave the picker reading
+ * "Uploading… 0%" for minutes with no way forward. Aborting turns that into a
+ * clear, immediate failure the visitor can retry.
+ */
+const UPLOAD_TIMEOUT_MS = 30_000;
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -263,6 +274,12 @@ export function ImageUploadField({
         { id: entryId, name: file.name, size: file.size, percent: 0 },
       ]);
 
+      // Abandon the upload after `UPLOAD_TIMEOUT_MS`. Passing this signal to the
+      // SDK also stops its internal retries, so a failure is reported once
+      // rather than after ten backoff attempts.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
       try {
         const blob = await upload(imageBlobPathname(type, crypto.randomUUID()), file, {
           access: "public",
@@ -271,6 +288,7 @@ export function ImageUploadField({
           // Read by the upload route and checked before a token is issued, so
           // the type is verified rather than taken on trust.
           clientPayload: JSON.stringify({ type }),
+          abortSignal: controller.signal,
           onUploadProgress: ({ percentage }) => {
             setPending((current) =>
               current.map((item) =>
@@ -285,9 +303,15 @@ export function ImageUploadField({
           ...current,
           { name: file.name, url: blob.url, size: file.size },
         ]);
-      } catch {
+      } catch (error) {
+        // Any failure — a non-OK token response, a blocked or stalled upload, or
+        // the timeout above — surfaces the same actionable message. The image is
+        // simply not attached, so the request can still be submitted without it.
         setPending((current) => current.filter((item) => item.id !== entryId));
-        setLocalError(`We could not upload "${file.name}". Please try again.`);
+        console.error(`[upload] Failed to upload "${file.name}":`, error);
+        setLocalError("Upload failed, retry");
+      } finally {
+        clearTimeout(timeout);
       }
     }
   }

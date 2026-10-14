@@ -76,8 +76,14 @@ const DEFAULTS: Record<RateLimitAction, { limit: number; windowSeconds: number }
 const memoryCounters = new Map<string, { count: number; resetAt: number }>();
 const MAX_KEYS = 10_000;
 
-/** Redis calls are given a hard deadline; a hung request must not hang the form. */
-const REDIS_TIMEOUT_MS = 1_500;
+/**
+ * Redis calls are given a hard deadline; a hung request must not hang the form.
+ *
+ * Two seconds, matching the upload route's own budget. The limiter is a
+ * backstop rather than a gate, so when Upstash is slow the request proceeds
+ * uncounted instead of waiting on it.
+ */
+const REDIS_TIMEOUT_MS = 2_000;
 
 /**
  * Warns once per process when counting falls back to memory.

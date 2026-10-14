@@ -14,13 +14,31 @@ const isDev = process.env.NODE_ENV === "development";
  * is used anywhere, and the database is only reachable from server code.
  * See README "Security notes" for the nonce upgrade path.
  */
+
+/**
+ * Origins the browser must be allowed to talk to for image uploads.
+ *
+ * `@vercel/blob/client` does not route the bytes through this app: after
+ * exchanging a token with `/api/upload`, the browser `PUT`s the file straight
+ * to Vercel Blob's API. That request is cross-origin, so with a bare
+ * `connect-src 'self'` the browser blocks it before it is sent. The SDK treats
+ * the block as a *network* error and retries with exponential backoff, which is
+ * why the picker sits at "Uploading… 0%" instead of failing.
+ *
+ * Two origins are listed because the SDK's upload endpoint
+ * (`https://vercel.com/api/blob` in @vercel/blob 2.8.x) may redirect to the
+ * store host. A CSP source cannot carry a path, so the origin is the smallest
+ * unit available.
+ */
+const blobConnectSrc = ["https://vercel.com", "https://*.blob.vercel-storage.com"];
+
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+  `connect-src 'self' ${blobConnectSrc.join(" ")}${isDev ? " ws: wss:" : ""}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
