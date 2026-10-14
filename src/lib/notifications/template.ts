@@ -277,12 +277,12 @@ export function serviceRequestEmailHtml(request: NewServiceRequest): string {
 
   const imageList =
     images.length > 0
-      ? `<ul style="margin:0;padding-left:20px;">${images
+      ? `<div style="margin:0;padding-left:0;">${images
           .map(
             (url) =>
-              `<li style="margin:4px 0;"><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></li>`,
+              `<div style="margin:16px 0;"><img src="${escapeHtml(url)}" alt="Uploaded attachment" style="max-width:100%;height:auto;border:0;display:block;"><div style="font-size:12px;color:#6B6B6B;margin-top:4px;"><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></div></div>`,
           )
-          .join("")}</ul>`
+          .join("")}</div>`
       : `<p style="margin:0;color:#6B6B6B;">None.</p>`;
 
   return `<!DOCTYPE html>
