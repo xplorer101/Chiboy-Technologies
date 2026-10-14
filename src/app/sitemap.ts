@@ -22,12 +22,21 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!siteUrl) return [];
 
+  let projects: { slug: string; updatedAt: Date | null }[] = [];
+  try {
+    // Skipped entirely while the portfolio is hidden, so the sitemap neither
+    // lists the section nor reads the database for it.
+    projects = SHOW_PORTFOLIO ? await getPublishedProjectTimestamps() : [];
+  } catch (error) {
+    // Fall back to static pages only if the DB is unavailable; don't fail build
+    console.error("[sitemap] Failed to fetch project timestamps:", error);
+    projects = [];
+  }
+
   const entries = buildSitemap({
     baseUrl: siteUrl,
     serviceSlugs: services.map((service) => service.slug),
-    // Skipped entirely while the portfolio is hidden, so the sitemap neither
-    // lists the section nor reads the database for it.
-    projects: SHOW_PORTFOLIO ? await getPublishedProjectTimestamps() : [],
+    projects,
   });
 
   return entries;
