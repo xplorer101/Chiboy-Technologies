@@ -31,11 +31,11 @@ export function WorkflowSteps({
       {steps.map((step, index) => (
         <li
           key={step.title}
-          className="relative flex gap-4 rounded-[var(--radius-card)] border border-charcoal-200 bg-white p-6 shadow-[var(--shadow-card)]"
+          className="relative flex gap-4 rounded-[var(--radius-card)] border border-charcoal-200 bg-white p-6"
         >
           <span
             aria-hidden="true"
-            className="inline-grid size-9 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-bold text-gold-400"
+            className="inline-grid size-9 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-semibold text-white"
           >
             {index + 1}
           </span>
@@ -70,7 +70,6 @@ export function WorkflowSection({
       <Container>
         <SectionHeading
           id={id}
-          eyebrow="How we work"
           title="Our service process"
           lead="The same six steps follow every job, whatever the service, so you always know what is happening and what comes next."
           align="center"

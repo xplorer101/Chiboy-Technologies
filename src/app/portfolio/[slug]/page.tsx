@@ -137,7 +137,7 @@ export default async function ProjectPage({ params }: PageProps) {
               {project.isPlaceholder ? <Badge tone="placeholder">Placeholder</Badge> : null}
             </div>
 
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">
               {project.title}
             </h1>
 
@@ -150,7 +150,7 @@ export default async function ProjectPage({ params }: PageProps) {
                 Usually delivered under{" "}
                 <Link
                   href={`/services/${service.slug}`}
-                  className="font-semibold text-gold-400 underline underline-offset-4 hover:text-gold-300"
+                  className="font-semibold text-blue-300 underline underline-offset-4 hover:text-blue-200"
                 >
                   {service.name}
                 </Link>
@@ -197,7 +197,7 @@ export default async function ProjectPage({ params }: PageProps) {
           <Container>
             <div
               role="note"
-              className="flex gap-4 rounded-2xl border border-dashed border-gold-600/60 bg-gold-500/5 p-6"
+              className="flex gap-4 rounded-2xl border border-dashed border-charcoal-300 bg-charcoal-50 p-6"
             >
               <AlertTriangle
                 className="mt-0.5 size-5 shrink-0 text-gold-600"
@@ -239,7 +239,7 @@ export default async function ProjectPage({ params }: PageProps) {
 
             <aside className="lg:col-span-1">
               <div className="rounded-2xl border border-navy-100 bg-navy-50 p-6 lg:sticky lg:top-24">
-                <h2 className="flex items-center gap-2 text-sm font-semibold tracking-wider text-charcoal-500 uppercase">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-charcoal-600">
                   <Wrench className="size-4" aria-hidden="true" />
                   What it involved
                 </h2>
@@ -301,7 +301,6 @@ export default async function ProjectPage({ params }: PageProps) {
             <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <SectionHeading
                 id="related-heading"
-                eyebrow="More work"
                 title="Related projects"
               />
               <ButtonLink
@@ -352,7 +351,7 @@ function ProseBlock({
 }) {
   return (
     <section aria-labelledby={headingId}>
-      <h2 id={headingId} className="text-xl font-bold text-navy-900 sm:text-2xl">
+      <h2 id={headingId} className="text-xl font-semibold text-navy-900 sm:text-2xl">
         {title}
       </h2>
       <p className="mt-3 leading-relaxed text-charcoal-700">{children}</p>

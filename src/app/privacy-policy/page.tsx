@@ -69,7 +69,7 @@ export default function PrivacyPolicyPage() {
       <Section>
         <Container>
           <article className="max-w-3xl">
-            <h1 className="text-3xl font-bold text-navy-900 sm:text-4xl">Privacy Policy</h1>
+            <h1 className="text-3xl font-semibold text-navy-900 sm:text-4xl">Privacy Policy</h1>
             <p className="mt-3 text-sm text-charcoal-600">
               Chiboy Technologies &mdash; Effective {EFFECTIVE_DATE}
             </p>
@@ -254,8 +254,8 @@ export default function PrivacyPolicyPage() {
 function Clause({ index, title, children }: { index: number; title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-xl font-bold text-navy-900">
-        <span className="mr-2 text-gold-600 tabular-nums">{index}.</span>
+      <h2 className="text-xl font-semibold text-navy-900">
+        <span className="mr-2 text-blue-600 tabular-nums">{index}.</span>
         {title}
       </h2>
       <div className="mt-3 space-y-4 leading-relaxed text-charcoal-700 [&_li]:ml-5 [&_li]:list-disc [&_li]:pl-1 [&_strong]:font-semibold [&_strong]:text-navy-900">

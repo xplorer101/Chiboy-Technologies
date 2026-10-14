@@ -25,10 +25,7 @@ export default function NotFound() {
     <>
       <section className="bg-navy-900">
         <Container className="py-16 sm:py-20">
-          <p className="text-sm font-semibold tracking-wider text-gold-400 uppercase">
-            Error 404
-          </p>
-          <h1 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+          <h1 className="max-w-2xl text-3xl font-semibold text-white sm:text-4xl">
             We couldn&apos;t find that page
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-charcoal-300">
@@ -50,7 +47,7 @@ export default function NotFound() {
 
       <section className="bg-white" aria-labelledby="not-found-suggestions">
         <Container className="py-14 sm:py-16">
-          <h2 id="not-found-suggestions" className="text-2xl font-bold text-navy-900">
+          <h2 id="not-found-suggestions" className="text-2xl font-semibold text-navy-900">
             Popular destinations
           </h2>
 
@@ -59,11 +56,11 @@ export default function NotFound() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="group flex h-full flex-col rounded-[var(--radius-card)] border border-charcoal-200 bg-white p-6 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-600"
+                  className="group flex h-full flex-col rounded-[var(--radius-card)] border border-charcoal-200 bg-white p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                 >
                   <span
                     aria-hidden="true"
-                    className="inline-grid size-11 place-items-center rounded-lg bg-navy-50 text-navy-700 transition-colors group-hover:bg-navy-900 group-hover:text-gold-400"
+                    className="inline-grid size-11 place-items-center rounded-lg bg-navy-50 text-navy-700 transition-colors group-hover:bg-navy-900 group-hover:text-white"
                   >
                     <item.icon className="size-5" />
                   </span>

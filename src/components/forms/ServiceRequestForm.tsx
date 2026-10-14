@@ -101,7 +101,7 @@ function ConfirmationNote({ className }: { className?: string }) {
     <p
       role="note"
       className={cn(
-        "rounded-lg border border-l-4 border-charcoal-200 border-l-gold-500 bg-charcoal-50 px-4 py-3",
+        "rounded-[var(--radius-card)] border border-l-4 border-charcoal-200 border-l-blue-600 bg-charcoal-50 px-4 py-3",
         "text-sm leading-relaxed text-charcoal-700",
         className,
       )}

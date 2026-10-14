@@ -113,7 +113,6 @@ export default async function RequestServicePage({ searchParams }: PageProps) {
             <div>
               <SectionHeading
                 as="h1"
-                eyebrow="Request a Service"
                 title="Tell us what you need"
                 lead="The more you tell us about the problem, the faster we can help — and a photo of a screen or a fault often says more than a description."
               />
@@ -146,7 +145,7 @@ export default async function RequestServicePage({ searchParams }: PageProps) {
                 <ContactChannels heading="Prefer to talk?" />
 
                 <div className="mt-10 border-t border-charcoal-200 pt-8">
-                  <h2 className="text-xl font-bold text-navy-900">Or pick a service</h2>
+                  <h2 className="text-xl font-semibold text-navy-900">Or pick a service</h2>
                   <p className="mt-2 text-sm leading-relaxed text-charcoal-600">
                     Each page explains what is included and what it costs to work
                     through.
@@ -156,7 +155,7 @@ export default async function RequestServicePage({ searchParams }: PageProps) {
                       <li key={service.slug}>
                         <Link
                           href={`/services/${service.slug}`}
-                          className="text-navy-800 underline decoration-charcoal-300 underline-offset-2 transition-colors hover:text-navy-600 hover:decoration-navy-400"
+                          className="text-blue-700 underline decoration-charcoal-300 underline-offset-2 transition-colors hover:text-blue-800 hover:decoration-blue-400"
                         >
                           {service.name}
                         </Link>

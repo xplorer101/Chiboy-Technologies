@@ -40,7 +40,7 @@ export function ContactChannels({
 
   return (
     <div className={className}>
-      <Heading className="text-xl font-bold text-navy-900">{heading}</Heading>
+      <Heading className="text-xl font-semibold text-navy-900">{heading}</Heading>
       <p className="mt-2 text-sm leading-relaxed text-charcoal-600">
         If a form is not the easiest route for you, any of these reach the same
         people.

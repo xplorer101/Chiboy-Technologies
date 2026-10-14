@@ -81,12 +81,11 @@ export function Section({
 }
 
 /**
- * Standard section heading block: eyebrow, title, optional lead paragraph.
+ * Standard section heading block: title and an optional lead paragraph.
  * `as` must match the document heading order — pass it explicitly so heading
  * hierarchy is never left to chance.
  */
 export function SectionHeading({
-  eyebrow,
   title,
   lead,
   as: Tag = "h2",
@@ -95,7 +94,6 @@ export function SectionHeading({
   className,
   id,
 }: {
-  eyebrow?: string;
   title: string;
   lead?: string;
   as?: "h1" | "h2" | "h3";
@@ -114,21 +112,10 @@ export function SectionHeading({
         className,
       )}
     >
-      {eyebrow ? (
-        <p
-          className={cn(
-            "mb-3 text-sm font-semibold tracking-wider uppercase",
-            isDark ? "text-gold-400" : "text-navy-600",
-          )}
-        >
-          {eyebrow}
-        </p>
-      ) : null}
-
       <Tag
         id={id}
         className={cn(
-          "text-3xl font-bold sm:text-4xl",
+          "text-3xl font-semibold sm:text-4xl",
           isDark ? "text-white" : "text-navy-900",
         )}
       >

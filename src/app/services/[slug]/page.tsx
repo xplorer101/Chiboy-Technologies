@@ -4,7 +4,6 @@ import { ArrowRight, Check, MessageCircle } from "lucide-react";
 
 import { Container, Section, SectionHeading } from "@/components/ui/Layout";
 import { Breadcrumbs, breadcrumbJsonLd } from "@/components/ui/Breadcrumbs";
-import { ServiceIcon } from "@/components/ui/Card";
 import { FaqAccordion } from "@/components/ui/Accordion";
 import { ButtonLink } from "@/components/ui/Button";
 import { ServiceCard } from "@/components/services/ServiceCard";
@@ -127,19 +126,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
         <Container className="py-12 sm:py-16">
           <Breadcrumbs items={crumbs} tone="dark" className="mb-6" />
 
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-5">
-            <span
-              aria-hidden="true"
-              className="inline-grid size-14 shrink-0 place-items-center rounded-xl bg-white/10"
-            >
-              <ServiceIcon name={service.icon} className="size-7 text-gold-400" />
-            </span>
-
-            <div className="max-w-3xl">
-              <p className="text-sm font-semibold tracking-wider text-gold-400 uppercase">
-                Service
-              </p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+          <div className="max-w-3xl">
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl lg:text-5xl">
                 {service.name}
               </h1>
               <p className="mt-5 text-lg leading-relaxed text-charcoal-300">
@@ -164,7 +152,6 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 </ButtonLink>
               </div>
             </div>
-          </div>
         </Container>
       </section>
 
@@ -175,7 +162,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             <section aria-labelledby="problems-heading">
               <h2
                 id="problems-heading"
-                className="text-2xl font-bold text-navy-900 sm:text-3xl"
+                className="text-2xl font-semibold text-navy-900 sm:text-3xl"
               >
                 Problems this solves
               </h2>
@@ -204,7 +191,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             <section aria-labelledby="included-heading">
               <h2
                 id="included-heading"
-                className="text-2xl font-bold text-navy-900 sm:text-3xl"
+                className="text-2xl font-semibold text-navy-900 sm:text-3xl"
               >
                 What&apos;s included
               </h2>
@@ -217,9 +204,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                   <li key={item} className="flex gap-3">
                     <span
                       aria-hidden="true"
-                      className="mt-0.5 inline-grid size-5 shrink-0 place-items-center rounded-full bg-gold-500/15"
+                      className="mt-0.5 inline-grid size-5 shrink-0 place-items-center rounded-full bg-blue-50"
                     >
-                      <Check className="size-3.5 text-gold-700" strokeWidth={3} />
+                      <Check className="size-3.5 text-blue-700" strokeWidth={3} />
                     </span>
                     <span className="leading-relaxed text-charcoal-700">
                       {item}
@@ -241,7 +228,6 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <Container>
             <SectionHeading
               id="related-projects-heading"
-              eyebrow="Related work"
               title={`Examples of ${service.name.toLowerCase()}`}
               lead="Sample entries are shown while we prepare real project examples."
             />
@@ -260,7 +246,6 @@ export default async function ServiceDetailPage({ params }: PageProps) {
         <Container width="narrow">
           <SectionHeading
             id="faq-heading"
-            eyebrow="Questions"
             title="Frequently asked questions"
             align="center"
           />
@@ -276,7 +261,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 font-semibold text-navy-700 underline underline-offset-4 hover:text-navy-900"
+                className="inline-flex items-center gap-1.5 font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-800"
               >
                 <MessageCircle className="size-4" aria-hidden="true" />
                 Ask us on WhatsApp
@@ -285,7 +270,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <span>
                 <a
                   href="/contact"
-                  className="font-semibold text-navy-700 underline underline-offset-4 hover:text-navy-900"
+                  className="font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-800"
                 >
                   Contact us
                 </a>{" "}
@@ -302,7 +287,6 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading
               id="other-services-heading"
-              eyebrow="Explore"
               title="Other services"
             />
             <ButtonLink

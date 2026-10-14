@@ -86,15 +86,12 @@ export default function AboutPage() {
           <Breadcrumbs items={crumbs} tone="dark" className="mb-6" />
 
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold tracking-wider text-gold-400 uppercase">
-              About us
-            </p>
             {/* The heading names the page. The experience statement is the
                 strongest line on it, but a heading that says what the page is
                 beats one that says something quotable about the business — and
                 a screen reader jumping by heading lands somewhere meaningful
                 either way. */}
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl lg:text-5xl">
               {/* One text node, not `About {site.name}`. React separates adjacent
                   expressions with a comment marker, which leaves the heading as
                   two nodes in the served HTML — harmless to a screen reader, but
@@ -105,8 +102,8 @@ export default function AboutPage() {
               {aboutPage.purpose}
             </p>
 
-            <p className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-gold-500/30 bg-gold-500/10 px-4 py-1.5 text-sm font-semibold text-gold-300">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-gold-400" />
+            <p className="mt-6 inline-flex items-center gap-2.5 text-sm font-semibold text-navy-200">
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-blue-400" />
               {getExperienceStatement()}
             </p>
 
@@ -128,7 +125,7 @@ export default function AboutPage() {
         <Container>
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
             <div>
-              <h2 className="text-2xl font-bold text-navy-900 sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-navy-900 sm:text-3xl">
                 What we do
               </h2>
               <p className="mt-4 leading-relaxed text-charcoal-700">
@@ -137,7 +134,7 @@ export default function AboutPage() {
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold text-navy-900 sm:text-3xl">
+              <h2 className="text-2xl font-semibold text-navy-900 sm:text-3xl">
                 What to expect
               </h2>
               <ul className="mt-6 space-y-4">
@@ -192,7 +189,7 @@ export default function AboutPage() {
               <li key={step.title} className="relative">
                 <span
                   aria-hidden="true"
-                  className="inline-grid size-9 place-items-center rounded-full bg-navy-900 text-sm font-bold text-gold-400"
+                  className="inline-grid size-9 place-items-center rounded-full bg-navy-900 text-sm font-semibold text-white"
                 >
                   {index + 1}
                 </span>
@@ -222,7 +219,7 @@ export default function AboutPage() {
             {trustPoints.map((point) => (
               <li
                 key={point.title}
-                className="rounded-xl border border-navy-100 bg-white p-6 shadow-[var(--shadow-card)]"
+                className="rounded-xl border border-navy-100 bg-white p-6"
               >
                 <span
                   aria-hidden="true"
@@ -245,7 +242,7 @@ export default function AboutPage() {
         <Container>
           <div className="grid gap-8 rounded-2xl bg-navy-50 p-8 sm:p-10 lg:grid-cols-2 lg:gap-12">
             <div>
-              <h2 className="text-2xl font-bold text-navy-900">
+              <h2 className="text-2xl font-semibold text-navy-900">
                 Talk to us about your situation
               </h2>
               <p className="mt-3 leading-relaxed text-charcoal-700">
@@ -283,7 +280,7 @@ export default function AboutPage() {
             </div>
 
             <div className="flex flex-col justify-center gap-3">
-              <p className="text-sm font-semibold tracking-wider text-charcoal-500 uppercase">
+              <p className="text-sm font-semibold text-navy-800">
                 In a hurry
               </p>
               <p className="text-charcoal-700">
@@ -292,7 +289,7 @@ export default function AboutPage() {
               </p>
               <Link
                 href="/services"
-                className="mt-1 inline-flex items-center gap-1.5 font-semibold text-navy-800 underline decoration-gold-500 decoration-2 underline-offset-4 hover:text-navy-950"
+                className="mt-1 inline-flex items-center gap-1.5 font-semibold text-blue-700 underline decoration-blue-600 decoration-2 underline-offset-4 hover:text-blue-800"
               >
                 Browse all services
                 <ArrowRight className="size-4" aria-hidden="true" />

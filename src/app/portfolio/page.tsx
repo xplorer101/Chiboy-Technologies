@@ -120,10 +120,7 @@ export default async function PortfolioPage({
           <Breadcrumbs items={crumbs} tone="dark" className="mb-6" />
 
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold tracking-wider text-gold-400 uppercase">
-              Our work
-            </p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl lg:text-5xl">
               Portfolio
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-charcoal-300">
@@ -141,7 +138,6 @@ export default async function PortfolioPage({
               straight from the h1 to the h3 inside every ProjectCard. */}
           <SectionHeading
             id="portfolio-grid-heading"
-            eyebrow="Selected work"
             title="Projects we can show you"
             lead="Each entry sets out the problem, what was done and the outcome. Entries still marked as placeholders are samples of our format, not completed client work."
           />
@@ -241,7 +237,6 @@ export default async function PortfolioPage({
           <Container width="narrow">
             <SectionHeading
               id="placeholder-note-heading"
-              eyebrow="About these entries"
               title="Why some entries are marked as placeholders"
             />
 
@@ -385,7 +380,7 @@ function EmptyState({
         role="status"
         className="mt-8 rounded-2xl border border-charcoal-200 bg-charcoal-50 p-8 text-center"
       >
-        <AlertTriangle className="mx-auto size-8 text-gold-600" aria-hidden="true" />
+        <AlertTriangle className="mx-auto size-8 text-charcoal-500" aria-hidden="true" />
         <h2 className="mt-4 text-lg font-semibold text-navy-900">
           The portfolio is temporarily unavailable
         </h2>

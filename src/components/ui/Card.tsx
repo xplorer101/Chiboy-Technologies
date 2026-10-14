@@ -32,7 +32,7 @@ export function Card({
   return (
     <Tag
       className={cn(
-        "rounded-[var(--radius-card)] border border-charcoal-200 bg-white p-6 shadow-[var(--shadow-card)]",
+        "rounded-[var(--radius-card)] border border-charcoal-200 bg-white p-6",
         className,
       )}
     >
@@ -58,7 +58,7 @@ export function CardLink({
   children: ReactNode;
 }) {
   return (
-    <Card className={cn("group relative transition-shadow hover:shadow-[var(--shadow-lift)]", className)}>
+    <Card className={cn("group relative", className)}>
       {children}
       <h3 className="text-lg font-semibold text-navy-900">
         <Link href={href} className="after:absolute after:inset-0">
@@ -83,11 +83,11 @@ export function Badge({
   const tones = {
     neutral: "bg-charcoal-100 text-charcoal-700",
     navy: "bg-navy-100 text-navy-800",
-    accent: "bg-gold-500/15 text-gold-700",
-    warning: "bg-gold-500/20 text-gold-700",
+    accent: "bg-blue-50 text-blue-700",
+    warning: "bg-charcoal-100 text-charcoal-700",
     // Used for the explicitly-labelled placeholder content, so it can never be
     // mistaken for real information.
-    placeholder: "border border-dashed border-gold-600/60 bg-gold-500/10 text-gold-700",
+    placeholder: "border border-dashed border-charcoal-300 bg-charcoal-50 text-charcoal-600",
   } as const;
 
   return (

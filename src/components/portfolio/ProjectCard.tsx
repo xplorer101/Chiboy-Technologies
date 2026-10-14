@@ -61,7 +61,7 @@ export function ProjectCard({
     <Card
       as="li"
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden p-0 transition-shadow hover:shadow-[var(--shadow-lift)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-gold-600",
+        "group relative flex h-full flex-col overflow-hidden p-0 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600",
         className,
       )}
     >

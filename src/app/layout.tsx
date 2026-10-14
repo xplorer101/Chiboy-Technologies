@@ -55,6 +55,15 @@ export const metadata: Metadata = {
   creator: site.name,
   publisher: site.name,
   alternates: { canonical: "/" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/z.png", sizes: "192x192", type: "image/png" },
+      { url: "/z.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/z.png",
+  },
   openGraph: {
     type: "website",
     siteName: site.name,

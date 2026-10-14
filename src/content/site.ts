@@ -51,11 +51,12 @@ export function getExperienceStatement(): string {
 }
 
 export const hero = {
-  headline: "Technology Solutions That Keep Your Business Moving.",
+  headline: "Computer repair, software and networking in Kuje, Abuja.",
   subtext:
-    "From computer software maintenance and installations to networking, graphics design, technology sales and IT consultancy, CHIBOY TECHNOLOGIES provides practical technology solutions for individuals and businesses.",
+    "CHIBOY TECHNOLOGIES repairs computers, installs and maintains software, and sets up networks for homes and businesses around Kuje and the wider FCT. Tell us what is wrong and we will take a look.",
   primaryCta: { label: "Request a Service", href: "/request-service" },
-  secondaryCta: { label: "Explore Our Services", href: "/services" },
+  photoAlt:
+    "A computer being repaired on a workbench at CHIBOY TECHNOLOGIES in Kuje, Abuja.",
 } as const;
 
 /**

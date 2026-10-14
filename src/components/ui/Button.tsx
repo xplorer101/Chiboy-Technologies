@@ -21,17 +21,16 @@ const base =
   "disabled:pointer-events-none disabled:opacity-55";
 
 const variants: Record<Variant, string> = {
-  // Navy on white: the default call to action.
-  primary: "bg-navy-900 text-white hover:bg-navy-800 active:bg-navy-950",
+  // Accent blue on white: the primary call to action across the site.
+  primary: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800",
   // Outlined: the secondary call to action on light backgrounds.
   secondary:
-    "border border-navy-200 bg-white text-navy-900 hover:border-navy-300 hover:bg-navy-50",
-  // Gold: reserved for the single most important action in a given view, so the
-  // accent never becomes decorative.
-  accent: "bg-gold-500 text-navy-950 hover:bg-gold-400 active:bg-gold-600",
-  ghost: "text-navy-800 hover:bg-charcoal-100",
+    "border border-charcoal-300 bg-white text-navy-900 hover:border-charcoal-400 hover:bg-charcoal-50",
+  // Alias kept so existing call sites keep working; the brand has one accent.
+  accent: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800",
+  ghost: "text-blue-700 hover:bg-charcoal-100",
   // For use on navy/charcoal surfaces.
-  ghostDark: "border border-white/25 text-white hover:bg-white/10",
+  ghostDark: "border border-white/30 text-white hover:bg-white/10",
 };
 
 const sizes: Record<Size, string> = {

@@ -1,12 +1,10 @@
-import { Card, TrustIcon } from "@/components/ui/Card";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { Container, Section, SectionHeading } from "@/components/ui/Layout";
 import { ButtonLink } from "@/components/ui/Button";
 import { services } from "@/content/services";
-import { trustPoints } from "@/content/site";
+import { getContactDetails } from "@/content/site";
 import type { PortfolioCard } from "@/lib/portfolio";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
-import { ArrowRight } from "lucide-react";
 
 /**
  * Homepage sections.
@@ -16,29 +14,33 @@ import { ArrowRight } from "lucide-react";
  */
 
 export function TrustSection() {
+  const contact = getContactDetails();
+
   return (
     <Section tone="white" labelledBy="trust-heading">
       <Container>
         <SectionHeading
           id="trust-heading"
-          eyebrow="Why work with us"
           title="Straightforward technology support"
-          lead="We focus on solving the problem in front of us and explaining what we did, rather than selling more than you need."
-          align="center"
+          lead="We are a local technology business. We look at what is actually wrong, fix that, and explain what we did in plain terms."
         />
 
-        <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {trustPoints.map((point) => (
-            <Card as="li" key={point.title} className="h-full">
-              <span className="inline-grid size-11 place-items-center rounded-lg bg-navy-50">
-                <TrustIcon name={point.icon} className="size-5 text-navy-700" />
-              </span>
-              <h3 className="mt-4 font-semibold text-navy-900">{point.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-charcoal-600">
-                {point.body}
-              </p>
-            </Card>
-          ))}
+        <ul className="mt-8 space-y-3 text-charcoal-700">
+          {!contact.isLocationPlaceholder ? (
+            <li>
+              <span className="font-semibold text-navy-900">Where we are:</span>{" "}
+              {contact.location}
+            </li>
+          ) : null}
+
+          {!contact.isHoursPlaceholder ? (
+            <li>
+              <span className="font-semibold text-navy-900">Opening hours:</span>{" "}
+              {contact.hours}
+            </li>
+          ) : null}
+
+          <li>We explain what we did and do not sell you more than you need.</li>
         </ul>
       </Container>
     </Section>
@@ -49,20 +51,13 @@ export function ServicesPreview() {
   return (
     <Section tone="muted" labelledBy="services-preview-heading">
       <Container>
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <SectionHeading
-            id="services-preview-heading"
-            eyebrow="What we do"
-            title="Services"
-            lead="Six areas of technology work, for individuals and businesses."
-          />
-          <ButtonLink href="/services" variant="secondary" className="shrink-0 self-start sm:self-auto">
-            All services
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </ButtonLink>
-        </div>
+        <SectionHeading
+          id="services-preview-heading"
+          title="What we do"
+          lead="Six areas of technology work. Each has its own page with more detail."
+        />
 
-        <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-10 grid gap-x-12 gap-y-6 sm:grid-cols-2">
           {services.map((service) => (
             <ServiceCard key={service.slug} service={service} />
           ))}
@@ -79,7 +74,6 @@ export function PortfolioPreview({ projects }: { projects: readonly PortfolioCar
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <SectionHeading
             id="portfolio-preview-heading"
-            eyebrow="Selected work"
             title="Projects"
             lead="Examples of the kind of work we carry out."
           />
@@ -89,7 +83,6 @@ export function PortfolioPreview({ projects }: { projects: readonly PortfolioCar
             className="shrink-0 self-start sm:self-auto"
           >
             View portfolio
-            <ArrowRight className="size-4" aria-hidden="true" />
           </ButtonLink>
         </div>
 
@@ -115,15 +108,15 @@ export function PortfolioPreview({ projects }: { projects: readonly PortfolioCar
 function EmptyPortfolio() {
   return (
     <div className="mt-12 rounded-[var(--radius-card)] border border-dashed border-charcoal-300 bg-charcoal-50 p-10 text-center">
-      <p className="text-sm font-semibold tracking-wide text-navy-700 uppercase">
-        Portfolio coming soon
+      <p className="font-semibold text-navy-800">
+        Examples of our work are being prepared
       </p>
       <p className="mx-auto mt-3 max-w-md text-charcoal-600">
         We are preparing examples of completed work to publish here. In the
         meantime, please get in touch and we will happily discuss your
         requirements.
       </p>
-      <ButtonLink href="/request-service" variant="accent" className="mt-6">
+      <ButtonLink href="/request-service" className="mt-6">
         Request a Service
       </ButtonLink>
     </div>

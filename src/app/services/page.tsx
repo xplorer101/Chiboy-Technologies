@@ -49,7 +49,6 @@ export default function ServicesPage() {
         <Container>
           <SectionHeading
             id="services-grid-heading"
-            eyebrow="What we do"
             title="Choose the service you need"
             lead="Each service below explains the problems it solves and what the work includes. If you are not sure which applies, send us a description of the situation and we will point you in the right direction."
           />
@@ -98,10 +97,7 @@ function PageHeader({ crumbs }: { crumbs: readonly { label: string; href?: strin
       <Container className="py-12 sm:py-16">
         <Breadcrumbs items={crumbs} tone="dark" className="mb-6" />
 
-        <p className="text-sm font-semibold tracking-wider text-gold-400 uppercase">
-          Our services
-        </p>
-        <h1 className="mt-3 max-w-3xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+        <h1 className="mt-3 max-w-3xl text-3xl font-semibold text-white sm:text-4xl lg:text-5xl">
           {TITLE}
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-charcoal-300">

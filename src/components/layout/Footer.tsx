@@ -46,7 +46,7 @@ export function Footer() {
 
           {/* Navigation */}
           <nav aria-label="Footer">
-            <h2 className="text-sm font-semibold tracking-wider text-white uppercase">
+            <h2 className="text-sm font-semibold text-white">
               Company
             </h2>
             <ul className="mt-4 space-y-2.5 text-sm">
@@ -54,7 +54,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="transition-colors hover:text-gold-400"
+                    className="transition-colors hover:text-blue-300"
                   >
                     {link.label}
                   </Link>
@@ -63,7 +63,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/request-service"
-                  className="transition-colors hover:text-gold-400"
+                  className="transition-colors hover:text-blue-300"
                 >
                   Request a Service
                 </Link>
@@ -71,7 +71,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/privacy-policy"
-                  className="transition-colors hover:text-gold-400"
+                  className="transition-colors hover:text-blue-300"
                 >
                   Privacy Policy
                 </Link>
@@ -81,7 +81,7 @@ export function Footer() {
 
           {/* Services */}
           <div>
-            <h2 className="text-sm font-semibold tracking-wider text-white uppercase">
+            <h2 className="text-sm font-semibold text-white">
               Services
             </h2>
             <ul className="mt-4 space-y-2.5 text-sm">
@@ -89,7 +89,7 @@ export function Footer() {
                 <li key={service.slug}>
                   <Link
                     href={`/services/${service.slug}`}
-                    className="transition-colors hover:text-gold-400"
+                    className="transition-colors hover:text-blue-300"
                   >
                     {service.name}
                   </Link>
@@ -100,7 +100,7 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h2 className="text-sm font-semibold tracking-wider text-white uppercase">
+            <h2 className="text-sm font-semibold text-white">
               Contact
             </h2>
 
@@ -154,7 +154,7 @@ export function Footer() {
                 href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-navy-950 transition-colors hover:bg-gold-400"
+                className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-card)] bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
               >
                 <MessageCircle className="size-4" aria-hidden="true" />
                 Chat on WhatsApp
@@ -166,20 +166,6 @@ export function Footer() {
         <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p>
             &copy; {year} {site.name}. All rights reserved.
-          </p>
-
-          {/* Service area is still unconfirmed, so it is labelled as pending
-              rather than implying the office address is the whole coverage
-              area. */}
-          <p className="flex items-center gap-1.5 text-charcoal-400">
-            <MapPin className="size-4 shrink-0" aria-hidden="true" />
-            {contact.isLocationPlaceholder ? (
-              <PlaceholderValue value={contact.location} isPlaceholder />
-            ) : (
-              <FooterLink href={getMapsLink()} external>
-                {contact.location}
-              </FooterLink>
-            )}
           </p>
         </div>
       </div>
@@ -198,7 +184,7 @@ function ContactRow({
 }) {
   return (
     <li className="flex items-start gap-2.5">
-      <Icon className="mt-0.5 size-4 shrink-0 text-gold-500" aria-hidden="true" />
+      <Icon className="mt-0.5 size-4 shrink-0 text-blue-400" aria-hidden="true" />
       <span className="min-w-0">
         <span className="sr-only">{label}: </span>
         {children}
@@ -233,7 +219,7 @@ function FooterLink({
     <a
       href={href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="rounded text-charcoal-300 underline decoration-charcoal-500 underline-offset-2 transition-colors hover:text-gold-400 hover:decoration-gold-400"
+      className="rounded-sm text-charcoal-300 underline decoration-charcoal-500 underline-offset-2 transition-colors hover:text-blue-300 hover:decoration-blue-300"
     >
       {children}
     </a>
@@ -255,7 +241,7 @@ export function CtaBand() {
           <div className="max-w-xl">
             <h2
               id="cta-band-heading"
-              className="text-2xl font-bold text-white sm:text-3xl"
+              className="text-2xl font-semibold text-white sm:text-3xl"
             >
               Tell us what you need help with.
             </h2>

@@ -78,7 +78,7 @@ export function Header({
   }, [isOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-charcoal-200 bg-white/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-charcoal-200 bg-white">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-5 sm:px-6 lg:px-8">
         <Link
           href="/"
@@ -112,11 +112,11 @@ export function Header({
                 )}
               >
                 {link.label}
-                {/* Gold underline marks the current page without shifting layout. */}
+                {/* Blue underline marks the current page without shifting layout. */}
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "mt-0.5 block h-0.5 rounded-full bg-gold-500 transition-opacity",
+                    "mt-0.5 block h-0.5 rounded-full bg-blue-600 transition-opacity",
                     active ? "opacity-100" : "opacity-0",
                   )}
                 />

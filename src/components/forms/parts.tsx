@@ -373,7 +373,9 @@ export function RadioGroup({
                   "text-center text-sm font-medium text-charcoal-800 transition-colors",
                   "hover:border-navy-300 hover:bg-navy-50",
                   "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-navy-600",
+                  // Checked state: navy border + background, blue accent ring for brand identity
                   "peer-checked:border-navy-700 peer-checked:bg-navy-50 peer-checked:text-navy-900",
+                  "peer-checked:ring-2 peer-checked:ring-blue-600 peer-checked:ring-offset-2",
                 )}
               >
                 {option.label}

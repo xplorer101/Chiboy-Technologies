@@ -54,7 +54,7 @@ export function Breadcrumbs({
                   href={item.href}
                   className={cn(
                     "rounded transition-colors hover:underline",
-                    isDark ? "hover:text-gold-400" : "hover:text-navy-800",
+                    isDark ? "hover:text-blue-300" : "hover:text-navy-800",
                   )}
                 >
                   {item.label}

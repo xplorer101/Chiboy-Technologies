@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
 
-import { EMBLEM_GOLD, EMBLEM_GROUND } from "@/brand/emblem";
 import { site } from "@/content/site";
 
 /**
@@ -29,6 +28,11 @@ export const contentType = "image/png";
 /** Matches `--color-navy-950`, the site's darkest surface. */
 const NAVY_950 = "#0B1526";
 
+/** The logo's blue, used as the single accent. */
+const ACCENT_BLUE = "#004080";
+/** A lighter blue for text on the navy card, where #004080 would not read. */
+const ACCENT_BLUE_LIGHT = "#4A86C8";
+
 export default function OpengraphImage() {
   return new ImageResponse(
     (
@@ -41,8 +45,8 @@ export default function OpengraphImage() {
           justifyContent: "space-between",
           background: NAVY_950,
           padding: "72px 80px",
-          // A gold rule down the left edge: the accent, used as an accent.
-          borderLeft: `16px solid ${EMBLEM_GOLD}`,
+          // A blue rule down the left edge: the accent, used as an accent.
+          borderLeft: `16px solid ${ACCENT_BLUE_LIGHT}`,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
@@ -54,8 +58,8 @@ export default function OpengraphImage() {
               width: 76,
               height: 76,
               borderRadius: 18,
-              background: EMBLEM_GROUND,
-              color: EMBLEM_GOLD,
+              background: ACCENT_BLUE,
+              color: "#FFFFFF",
               fontSize: 40,
               fontWeight: 700,
             }}
@@ -88,7 +92,7 @@ export default function OpengraphImage() {
           >
             {site.tagline}
           </div>
-          <div style={{ display: "flex", fontSize: 32, color: EMBLEM_GOLD, fontWeight: 600 }}>
+          <div style={{ display: "flex", fontSize: 32, color: ACCENT_BLUE_LIGHT, fontWeight: 600 }}>
             Software &middot; Networks &middot; Graphics &middot; IT Support
           </div>
         </div>

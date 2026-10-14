@@ -96,7 +96,6 @@ export default function ContactPage() {
         <Container>
           <SectionHeading
             as="h1"
-            eyebrow="Contact"
             title="Get in touch"
             lead="Ask a question, describe a problem, or ask for a quotation. Whichever route you take, you are writing to the same people."
           />
@@ -128,7 +127,7 @@ export default function ContactPage() {
 
           <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-16">
             <div>
-              <h2 className="text-2xl font-bold text-navy-900">Send us a message</h2>
+              <h2 className="text-2xl font-semibold text-navy-900">Send us a message</h2>
               <p className="mt-2 mb-8 leading-relaxed text-charcoal-600">
                 Use this for anything that does not need an appointment — a question
                 about a service, a request for a quotation, or a description of a
@@ -138,7 +137,7 @@ export default function ContactPage() {
               <ContactForm />
 
               <noscript>
-                <p className="mt-6 rounded-lg border border-gold-600/40 bg-gold-500/10 p-4 text-sm leading-relaxed text-gold-700">
+                <p className="mt-6 rounded-[var(--radius-card)] border border-blue-200 bg-blue-50 p-4 text-sm leading-relaxed text-blue-800">
                   This form needs JavaScript to submit. The phone number, WhatsApp
                   number and email address above all reach us directly, and are the
                   faster route if you are in a hurry.
@@ -151,7 +150,7 @@ export default function ContactPage() {
                 <ContactChannels headingLevel="h2" heading="Where to find us" />
 
                 <div className="mt-10 border-t border-charcoal-200 pt-8">
-                  <h2 className="text-xl font-bold text-navy-900">
+                  <h2 className="text-xl font-semibold text-navy-900">
                     Looking for something specific?
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-charcoal-600">
@@ -170,7 +169,7 @@ export default function ContactPage() {
                       <li key={service.slug}>
                         <Link
                           href={`/services/${service.slug}`}
-                          className="text-navy-800 underline decoration-charcoal-300 underline-offset-2 transition-colors hover:text-navy-600 hover:decoration-navy-400"
+                          className="text-blue-700 underline decoration-charcoal-300 underline-offset-2 transition-colors hover:text-blue-800 hover:decoration-blue-400"
                         >
                           {service.name}
                         </Link>

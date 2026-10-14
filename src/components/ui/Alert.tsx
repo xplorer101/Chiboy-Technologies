@@ -40,8 +40,8 @@ export function Alert({
       Icon: TriangleAlert,
     },
     warning: {
-      wrapper: "border-gold-600/40 bg-gold-500/10 text-gold-700",
-      icon: "text-gold-600",
+      wrapper: "border-charcoal-300 bg-charcoal-100 text-charcoal-800",
+      icon: "text-charcoal-600",
       Icon: TriangleAlert,
     },
   } as const;
