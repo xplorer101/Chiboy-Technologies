@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 
 import { submitServiceRequest } from "@/lib/actions/service-request";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,7 @@ import {
   type FileInputHandle,
 } from "@/components/forms/parts";
 import { buildFormData } from "@/lib/utils/form-data";
+import { cn } from "@/lib/utils/cn";
 import {
   HONEYPOT_FIELD,
   OTHER_SERVICE,
@@ -85,6 +86,31 @@ type Result =
   | { status: "idle" | "pending" }
   | { status: "success"; message: string; reference: string }
   | { status: "error"; message: string; fieldErrors: Record<string, string> | undefined };
+
+/**
+ * The confirmation-email notice.
+ *
+ * Shown directly above the submit button, and again inside the success banner,
+ * because the address the visitor typed is where the confirmation lands — the
+ * one thing they have to check somewhere other than this page. `role="note"`
+ * marks it as advisory rather than an error or a status, so it is neither
+ * announced as a failure nor treated as a result.
+ */
+function ConfirmationNote({ className }: { className?: string }) {
+  return (
+    <p
+      role="note"
+      className={cn(
+        "rounded-lg border border-l-4 border-charcoal-200 border-l-gold-500 bg-charcoal-50 px-4 py-3",
+        "text-sm leading-relaxed text-charcoal-700",
+        className,
+      )}
+    >
+      <strong className="font-semibold text-navy-900">NOTE:</strong> A confirmation email will
+      be sent to the email address you provided. Please check your spam or junk folder as well.
+    </p>
+  );
+}
 
 export function ServiceRequestForm({
   services,
@@ -160,10 +186,24 @@ export function ServiceRequestForm({
     setResult({ status: "error", message: response.message, fieldErrors: response.fieldErrors });
   };
 
+  /**
+   * Client-side validation failed, so no request was sent.
+   *
+   * The email is where the confirmation and any reply go, so a mistake there is
+   * the one worth stopping on: focus is moved to the field rather than left on
+   * the button, so the visitor is looking straight at the address they need to
+   * fix. Their other answers are untouched — only the message changes.
+   */
+  const onInvalid = (formErrors: FieldErrors<ServiceRequestInput>) => {
+    if (formErrors.email) {
+      form.setFocus("email");
+    }
+  };
+
   return (
     <form
       ref={formRef}
-      onSubmit={handleSubmit(onValid)}
+      onSubmit={handleSubmit(onValid, onInvalid)}
       noValidate
       className="relative space-y-7 rounded-xl border border-charcoal-200 bg-white p-6 shadow-sm sm:p-8"
     >
@@ -176,7 +216,11 @@ export function ServiceRequestForm({
         reference={result.status === "success" ? result.reference : undefined}
         message={result.status === "success" || result.status === "error" ? result.message : undefined}
         hidden={fieldErrors !== undefined && result.status === "error"}
-      />
+      >
+        {/* Repeated in the success state, so the reminder is part of what the
+            banner announces rather than something left further down the page. */}
+        {result.status === "success" ? <ConfirmationNote className="mt-3" /> : null}
+      </ResultRegion>
 
       <fieldset className="space-y-5">
         <legend className="sr-only">Your details</legend>
@@ -298,16 +342,20 @@ export function ServiceRequestForm({
         />
       </fieldset>
 
-      <div className="flex flex-col gap-4 border-t border-charcoal-200 pt-7 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          type="submit"
-          size="lg"
-          isLoading={isSubmitting}
-          loadingText="Sending your request…"
-        >
-          Request this service
-        </Button>
-        <p className="text-sm text-charcoal-600">You will get a reference to quote.</p>
+      <div className="space-y-4 border-t border-charcoal-200 pt-7">
+        <ConfirmationNote />
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={isSubmitting}
+            loadingText="Sending your request…"
+          >
+            Request this service
+          </Button>
+          <p className="text-sm text-charcoal-600">You will get a reference to quote.</p>
+        </div>
       </div>
 
       <p className="text-sm leading-relaxed text-charcoal-600">

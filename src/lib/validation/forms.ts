@@ -54,11 +54,36 @@ const nameSchema = z
   .transform((value) => value.replace(/\s+/g, " "))
   .pipe(z.string().min(2, "Please enter your name").max(100, "That name is too long"));
 
-const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .pipe(z.string().min(1, "Please enter your email address").email("Enter a valid email address"));
+/** The contact form's two ways an address can fail. */
+const EMAIL_EMPTY_MESSAGE = "Please enter your email address";
+const EMAIL_INVALID_MESSAGE = "Enter a valid email address";
+
+/**
+ * The service request names an example.
+ *
+ * This is the address a confirmation and any reply are sent to, so the cost of a
+ * typo is higher than on the contact form, and the wording spells out what a
+ * valid address looks like. It is the same rule underneath — see `emailSchema`.
+ */
+export const SERVICE_REQUEST_EMAIL_MESSAGE =
+  "Please enter a valid email address, e.g. name@example.com";
+
+/**
+ * The email rule, with its wording passed in.
+ *
+ * The transformation is the part that must be identical everywhere: an address
+ * is trimmed and lower-cased *before* it is checked, so `"  Ada@Example.COM "`
+ * and `"ada@example.com"` are one address rather than two rows. Only the message
+ * differs between the forms — presentation, not a rule — so it is a parameter
+ * rather than a second copy of the rule that could drift from this one.
+ */
+function emailSchema(emptyMessage: string, invalidMessage: string) {
+  return z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.string().min(1, emptyMessage).email(invalidMessage));
+}
 
 /**
  * The sentinel for "my problem is not one of the listed services".
@@ -85,7 +110,7 @@ const SERVICE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** Contact form. */
 export const contactMessageSchema = z.object({
   fullName: nameSchema,
-  email: emailSchema,
+  email: emailSchema(EMAIL_EMPTY_MESSAGE, EMAIL_INVALID_MESSAGE),
   /** Optional: a visitor with a query but no phone number should not be blocked. */
   phone: phoneSchema,
   message: z
@@ -102,7 +127,7 @@ export type ContactMessageValues = z.output<typeof contactMessageSchema>;
 export const serviceRequestSchema = z
   .object({
     fullName: nameSchema,
-    email: emailSchema,
+    email: emailSchema(SERVICE_REQUEST_EMAIL_MESSAGE, SERVICE_REQUEST_EMAIL_MESSAGE),
     phone: phoneSchema.refine((value) => value !== "", {
       message: "We need a phone number to call you back about",
     }),

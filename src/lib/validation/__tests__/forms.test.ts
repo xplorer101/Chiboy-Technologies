@@ -6,6 +6,7 @@ import {
   HONEYPOT_FIELD,
   isHoneypotTripped,
   OTHER_SERVICE,
+  SERVICE_REQUEST_EMAIL_MESSAGE,
   serviceRequestSchema,
 } from "@/lib/validation/forms";
 
@@ -190,6 +191,34 @@ describe("service request", () => {
     expect(serviceRequestSchema.safeParse({ ...base, description: "it is broken" }).success).toBe(
       false,
     );
+  });
+
+  it("rejects a malformed email with the request's own wording", () => {
+    const result = serviceRequestSchema.safeParse({ ...base, email: "not-an-address" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((entry) => entry.path[0] === "email");
+      expect(issue?.message).toBe(SERVICE_REQUEST_EMAIL_MESSAGE);
+    }
+  });
+
+  it("treats a blank email as missing, with the same wording", () => {
+    // Empty and malformed are the same problem to the visitor: there is no
+    // usable address. One message covers both.
+    const result = serviceRequestSchema.safeParse({ ...base, email: "   " });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((entry) => entry.path[0] === "email");
+      expect(issue?.message).toBe(SERVICE_REQUEST_EMAIL_MESSAGE);
+    }
+  });
+
+  it("trims and lower-cases the email before validating it", () => {
+    const result = serviceRequestSchema.parse({ ...base, email: "  Ada.Lovelace@Example.COM " });
+
+    expect(result.email).toBe("ada.lovelace@example.com");
   });
 });
 
